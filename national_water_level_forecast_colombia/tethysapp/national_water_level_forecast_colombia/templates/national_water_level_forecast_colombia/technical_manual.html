@@ -1,0 +1,217 @@
+{% extends "national_water_level_forecast_colombia/app_base.html" %} 
+{% load static %} 
+
+{% block import_gizmos %} 
+{% endblock %} 
+
+{% block header_buttons %}
+<!-- <div
+  class="header-button glyphicon-button"
+  data-bs-toggle="tooltip"
+  data-bs-placement="bottom"
+  title="About"
+>
+  <a data-bs-toggle="modal" data-bs-target="#about"
+    ><span class="glyphicon glyphicon-info-sign"></span
+  ></a>
+</div> -->
+
+{% url "national_water_level_forecast_colombia:home" as home %}
+<div class="header-button bi-button" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Aplicación">
+  <a  href=" {{ home }}" ><span class="bi bi-arrow-return-left"></span></a>
+</div>
+
+{% endblock %}
+
+{% block app_navigation_items %} 
+
+{% url "national_water_level_forecast_colombia:home" as home %} 
+{% url "national_water_level_forecast_colombia:user_manual" as user_manual %} 
+{% url "national_water_level_forecast_colombia:technical_manual" as technical_manual %}
+
+<li class="nav-item"><a href=" {{ home }}" class="nav-link {% if request.path == home %}active{% endif %}">Aplicación</a></li>
+<li class="nav-item"><a href="{{ user_manual }}" class="nav-link {% if request.path == user_manual %}active{% endif %}">Manual de Usuario</a></li>
+<li class="nav-item"><a href="{{ technical_manual }}" class="nav-link {% if request.path == technical_manual %}active{% endif %}">Manual Técnico</a></li>
+
+{% endblock %} 
+
+{% block app_content %}
+<div class="main_content">
+  <center>
+  <h1><strong>MANUAL TÉCNICO</strong></h1>
+  </center>
+
+  <center>
+  <h2><strong>NATIONAL WATER LEVEL FORECAST</strong></h2>
+  </center>
+
+  <p>
+    El modelo hidrológico global de GEOGloWS ECMWF Streamflow Services (GESS)
+    provee un pronóstico hidrológico de 52 miembros y una simulación histórica
+    para cada río en el mundo.
+  </p>
+
+  <p>
+    La corrección de sesgo usada se basa en curvas de duración de caudales
+    mensuales descrito por
+    <a href="https://doi.org/10.3390/hydrology8020071"> Sanchez-Lozano,2021.</a>
+  </p>
+  <p>
+    La metodología de corrección del sesgo combina los datos observados localmente
+    y los valores simulados del modelo GESS para ajustar la magnitud de los
+    valores simulados. Los valores de caudal tienen incertidumbre porque estos son
+    obtenidos a través de una curva de calibración para cada sección del río. El
+    nivel de agua es la única variable a cerca de la cual se tiene certeza.
+    Adicionlmente, es más fácil tener mediciones de nivel de agua en cualquier
+    sección del río. Por otro lado, hay más valores de nivel de agua disponibles
+    que valores de caudal.
+  </p>
+
+  <center>
+    <img
+      src="{% static 'national_water_level_forecast_colombia/images/manual/curva.png' %}"
+      style="width: 600px"
+    />
+  </center>
+
+  <p>
+    Por lo tanto, es posible extender la metodología de corrección de sesgo para
+    generar valores simulados de nivel de agua usando el modelo GESS.
+  </p>
+
+  
+  <center>
+    <img
+      src="{% static 'national_water_level_forecast_colombia/images/manual/cdf.png' %}"
+      style="width: 600px"
+    />
+  </center>
+  
+  <p>
+    Para cada mes en las series de tiempo históricas de nivel de agua observada y
+    de caudales simulados, se calcula la curva de duración de caudales y de
+    niveles según corresponda. Después de eso, en un solo mes, se puede estimar la
+    probabilidad de no excedencia de cada valor simulado. Por lo tanto, es posible
+    estimar el valor de nivel de agua observado que corresponde a esa probabilidad
+    de no excedencia. Finalmente, se convierte el valor simulado reemplazándolo con
+    el nivel de agua observado equivalente a la misma probabilidad de no
+    excedencia.
+  </p>
+
+  <center>
+    <img
+      src="{% static 'national_water_level_forecast_colombia/images/manual/compare.png' %}"
+      style="width: 600px"
+    />
+  </center>
+
+  <p>
+    La figura anterior muestra la extensión de la corrección del sesgo para los
+    niveles de agua aplicada para toda la simulación histórica. Después de esta
+    extensión de la corrección del sesgo para los niveles de agua, la simulación
+    histórica proporciona una simulación histórica del nivel de agua basada en la
+    simulación histórica original del caudal. El método convierte los valores del
+    caudal en valores del nivel del agua cercanos a los datos observados. Pero no
+    corrige el tiempo de los picos. Sin embargo, los nuevos valores simulados
+    están en el mismo orden de magnitud que los valores observados.
+  </p>
+
+  <p>
+    Aplicamos la metodología descrita anteriormente para las diferentes estaciones
+    de aforo de los Países Amazónicos. Utilizamos el coeficiente de eficiencia de
+    Kling-Gupta (KGE -2012) para cuantificar el error de la simulación histórica.
+    La figura siguiente muestra los resultados antes y después de la corrección
+    del sesgo.
+  </p>
+
+  <center>
+    <img
+      src="{% static 'national_water_level_forecast_colombia/images/manual/amazonia.png' %}"
+      style="width: 600px"
+    />
+  </center>
+
+
+  <p>
+    Estos resultados son alentadores y sugieren que esta corrección de sesgo
+    implementada puede utilizarse para obtener localmente previsiones del nivel
+    del agua cuando se dispone de observaciones históricas. Utilizamos la
+    simulación del nivel de agua histórico para definir los nuevos periodos de
+    retorno que definirán el umbral de alerta. La metodología propuesta para
+    obtener la previsión del nivel del agua utiliza la curva de duración del
+    caudal mensual y la curva de duración del nivel del agua para los valores
+    históricos simulados del caudal y los valores observados del nivel del agua y
+    ajusta los valores de previsión de la misma manera que lo hicimos para la
+    simulación histórica.
+  </p>
+
+
+  <center>
+    <img
+      src="{% static 'national_water_level_forecast_colombia/images/manual/pronostico.png' %}"
+      style="width: 600px"
+    />
+  </center>
+
+  <h6><strong>Recursos Adicionales</strong></h6>
+  <p>
+    Ejercicio práctico: Nivel de Agua - GEOGloWS ECMWF Streamflow Prediction Services - Rio Cauca
+  </p>
+  <p>
+    <a
+      href="https://colab.research.google.com/drive/1bowYuK0VTUQhaEG3H89rMrhIXcQTU_8n"
+      >Google Colab</a
+    >
+  </p>
+
+  <h5><strong>Páginas de Interés</strong></h5>
+  <p>
+    Página de IDEAM:
+    <a class="reference external" href="http://www.ideam.gov.co/">IDEAM</a>
+  </p>
+  <p>
+    Página de SERVIR-Amazonia:
+    <a class="reference external" href="https://servir.ciat.cgiar.org/?lang=es"
+      >SERVIR-Amazonia</a
+    >
+  </p>
+  <p>
+    Página del CIAT:
+    <a class="reference external" href="https://ciat.cgiar.org/?lang=es"
+      >CIAT</a
+    >
+  </p>
+  <p>
+    Página de Laboratorio de Hydroinformática Brigham Young University:
+    <a class="reference external" href="https://hydroinformatics.byu.edu/"
+      >Página BYU</a
+    >
+  </p>
+  <p>
+    Video de Brigham Young University-GEOGloWS:
+    <a class="reference external" href="https://youtu.be/PLG8U8AQmXY"
+      >Video BYU</a
+    >
+  </p>
+</div>
+
+{% endblock %} 
+
+{% block after_app_content %} 
+{% endblock %} 
+
+{% block app_actions %} 
+{% endblock %} 
+
+{% block content_dependent_styles %}
+  {{ block.super }}
+  <link href="{% static 'national_water_level_forecast_colombia/css/user_manual.css' %}" rel="stylesheet"/>
+{% endblock %}
+
+{% block scripts %} 
+{{ block.super }}
+<script
+  src="{% static 'national_water_level_forecast_colombia/js/manual.js' %}"
+  type="text/javascript"
+></script>
+{% endblock %}

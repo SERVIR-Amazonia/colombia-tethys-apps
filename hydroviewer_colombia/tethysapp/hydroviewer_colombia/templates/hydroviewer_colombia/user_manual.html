@@ -1,0 +1,249 @@
+{% extends "hydroviewer_colombia/base.html" %}
+{% load static %}
+
+{% block import_gizmos %}
+{% endblock %}
+
+{% block header_buttons %}
+
+{% url "hydroviewer_colombia:home" as home %}
+<div class="header-button bi-button" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Aplicación">
+  <a  href=" {{ home }}" ><span class="bi bi-arrow-return-left"></span></a>
+</div>
+
+{% endblock %}
+
+{% block app_navigation_items %}
+
+{% url "hydroviewer_colombia:home" as home %}
+{% url "hydroviewer_colombia:user_manual" as user_manual %}
+{% url "hydroviewer_colombia:technical_manual" as technical_manual %}
+
+<!-- <li class="{% if request.path == home %}active{% endif %}"><a href="{{ home }}">Aplicación</a></li>
+<li class="{% if request.path == user_manual %}active{% endif %}"><a href="{{ user_manual }}">Manual de Usuario</a></li>
+<li class="{% if request.path == technical_manual %}active{% endif %}"><a href="{{ technical_manual }}">Manual Técnico</a></li> -->
+
+<li class="nav-item"><a href=" {{ home }}" class="nav-link {% if request.path == home %}active{% endif %}">Aplicación</a></li>
+<li class="nav-item"><a href="{{ user_manual }}" class="nav-link {% if request.path == user_manual %}active{% endif %}">Manual de Usuario</a></li>
+<li class="nav-item"><a href="{{ technical_manual }}" class="nav-link {% if request.path == technical_manual %}active{% endif %}">Manual Técnico</a></li>
+{% endblock %}
+
+{% block app_content %}
+<div class="main_content">
+
+  <center><h1><strong>Manual de Usuario</strong></h1></center>
+  <center><h2>HYDROVIEWER COLOMBIA</h2></center>
+
+  <div class="fb_1">
+    <div class="fb_11">
+      <center>
+        <img id="logo"  
+            src="{% static 'hydroviewer_colombia/images/hydroviewer_colombia_logo.jpg' %}"
+            style="width: 100px;">
+      </center>
+    </div>
+
+    <div class="fb_12">
+      <p>Este website contiene una guía para el manejo de la aplicación 
+        <b>Hydroviewer Colombia</b>, alojada en la  plataforma 
+        tethys del IDEAM (Instituto de Hidrología, Meteorología y Estudios 
+        Ambientales). Tethys fue probada mediante la implementación de portales 
+        web para socios de la iniciativa de sostenibilidad del agua del Grupo 
+        de Observaciones de la Tierra (GEO) y de la Universidad Brigham Young 
+        University (BYU). En Colombia, la implementación y personalización de 
+        la aplicación ha sido posible con la colaboración del IDEAM, 
+        y el Centro Internacional de Agricultura Tropical (CIAT), mediante el 
+        programa SERVIR-Amazonia.</p>
+    </div>
+  </div>
+  
+
+  <div>
+    <h3><strong>Información General</strong></h3>
+
+    <p>Hydroviewer Colombia muestra el pronóstico de caudal para cualquier 
+      río de Colombia. La red de ríos obtenida resulta de la extracción de 
+      ríos global del GEOGloWS ECMWF. </p>
+
+    <center>
+      <img src="{% static 'hydroviewer_colombia/images/imgs/hydroviewerpag.png' %}"
+           style="width: 700px;">
+    </center>
+
+    <p><b>En Hydroviewer Colombia se puede visualizar pronóstico de caudal 
+      con un horizonte de 15 días para cualquier río en el Colombia, estos cauces 
+      son se visualizan en el mapa en color azul.</b></p>
+
+    <p>Además, se visualizan las alertas debido a la superación de los caudales asociados 
+      a los principales periodos de retorno. Estas se visualizan a partir de triángulos de 
+      diferentes colores en función del período de retorno que ha sido excedido en los 15 
+      días de pronóstico.</p>
+
+    <p>Al seleccionar los botones de las alertas, en caso de existir alguna en el mapa base, 
+      se observarán triángulos de alerta según el periodo de retorno. Como se muestra en la 
+      imagen a cnotinuación.</p>
+
+    <center>
+      <img src="{% static 'hydroviewer_colombia/images/imgs/hydroviewer_alertas.png' %}"
+           style="width: 500px;">
+    </center>
+
+    <p>En la pantalla de visualización puede observar los botones desplegables para seleccionar 
+      el departamento de interés, como ejemplo se muestra el departamento del Choco.</p>
+
+    <center>
+      <img src="{% static 'hydroviewer_colombia/images/imgs/hydroviewer_ejemplo_choco.png' %}"
+           style="width: 200px;">
+    </center>
+
+    <p>De igual manera se puede seleccionar por zona hidrográfica (Z.H.) o sub zona hidrográfica
+      (S.Z.H.). En el ejemplo de la imagen se muestra la demarcación de una sub zona hidrográfica.</p>
+
+    <center>
+      <img src="{% static 'hydroviewer_colombia/images/imgs/hydroviewer_ejemplo_zh.png' %}"
+           style="width: 500px;">
+    </center>
+
+  </div>
+
+  <div>
+    <h3><strong>Selecionar información</strong></h3>
+    <p>Posterior a la selección del cause de trabajo, se visualizará una ventana emergente 
+      con 4 pestañas: pronóstico, simulación histórica, estadísticos y descarga.</p>
+
+    <center>
+      <img src="{% static 'hydroviewer_colombia/images/imgs/botonesventanaemergente.png' %}"
+           style="width: 300px;">
+    </center>
+  
+
+    <h4><strong>Pronósticos</strong></h4>
+    <p>El pronóstico proviene de 51 simulaciones diferentes y uno de alta resolución, incluye los
+    períodos de retorno que se activan de forma predeterminada cuando la previsión supera un umbral. 
+    Los valores de umbral del período de retorno se muestran al pasar el cursor sobre ellos en el 
+    borde derecho del gráfico.</p>
+
+    <center>
+      <img src="{% static 'hydroviewer_colombia/images/imgs/pronostico.png' %}"
+           style="width: 500px;">
+    </center>
+
+    <p>A continuación se describe cada una de las partes visualizado en la ventana emergente de 
+    pronóstico:</p>
+
+    <ol>
+      <li><strong>Calendario:</strong> puede seleccionar un pronóstico anterior al de la fecha, 
+        hasta con un periodo de 40 días aproximadamente.</li>
+
+      <li> Se muestra el pronóstico con una previsión para 15 días, y se muestran los periodos 
+        de retorno. Incluye el promedio, los percentiles de caudal 25-75, los caudales máximo 
+        y mínimo, y un único pronóstico de mayor resolución.</li>
+
+      <li>La leyenda se puede ver a la derecha y las diferentes capas se pueden activar y desactivar. 
+        El valor real de caudal de datos para cada período de tiempo se puede mostrar al pasar el 
+        cursor sobre el gráfico. </li>
+      
+      <li>Todos los gráficos desplegados en la ventana emergente presentan una barra en la esquina 
+        superior derecha de los mismos: descarga en la opción de la cámara, zoom, pan, zoom in, 
+        zoom out, autoscale, reset axes.</li>
+
+      <center><p><img src="{% static 'hydroviewer_colombia/images/imgs/pronostico_botones.png' %}"
+      style="width: 500px;"></p> </center>
+
+      <li>En la parte inferior de la ventana emergente desplegada se puede visualizar un cuadro del 
+        porcentaje de Ensambles que exceden el periodo de retorno.</li>
+    </ol>
+
+    <h4><strong>Simulación histórica</strong></h4>
+    <p>El gráfico desplegado en esta opción es la simulación histórica de los últimos 40 años. Los 
+      diferentes colores en el gráfico representan los diferentes períodos de retorno que se calculan 
+      a partir de la simulación histórica de 40 años. Los periodos de retorno pueden ser activados o 
+      desactivados según considere. También puede realizar zoom en un fecha específica utilizando el 
+      cursor del mouse.</p>
+
+    <center>
+      <img src="{% static 'hydroviewer_colombia/images/imgs/simulacionhistorica.png' %}"
+           style="width: 500px;">
+    </center>
+
+
+    <h5><strong>Estadísticas de simulación histórica</strong></h5>
+    <p>En esta opción se puede observar: curva de duración de caudales, estacionalidad diaria y 
+      estacionalidad mensual.</p>
+
+    <center>
+      <img src="{% static 'hydroviewer_colombia/images/imgs/estadisticos.png' %}"
+           style="width: 500px;">
+    </center>
+
+    <h5><strong>Descarga</strong></h5>
+    <p>En esta opción le permite descargar el pronóstico y la simulación histórica en formato .csv</p>
+
+    <center>
+      <img src="{% static 'hydroviewer_colombia/images/imgs/descargas.png' %}"
+           style="width: 500px;">
+    </center>
+  
+  </div>
+
+  <div>
+    <h3><strong>Páginas de interes:</strong></h3>
+    <p>
+      Página del IDEAM:
+      <a
+        class="reference external"
+        href="http://www.ideam.gov.co/"
+        target="_blank"
+        >IDEAM</a
+      >
+    </p>
+    <p>
+      Página de SERVIR-Amazonia:
+      <a
+        class="reference external"
+        href="https://servir.ciat.cgiar.org/?lang=es"
+        target="_blank"
+        >SERVIR-Amazonia</a
+      >
+    </p>
+    <p>
+      Página del CIAT:
+      <a class="reference external" href="https://ciat.cgiar.org/?lang=es" target="_blank"
+        >CIAT</a
+      >
+    </p>
+    <p>
+      Página de Laboratorio de Hydroinformática Brigham Young University:
+      <a
+        class="reference external"
+        href="https://hydroinformatics.byu.edu/"
+        target="_blank"
+        >Página BYU</a
+      >
+    </p>
+    <p>
+      Video de Brigham Young University-GEOGloWS:
+      <a
+        class="reference external"
+        href="https://youtu.be/PLG8U8AQmXY"
+        target="_blank"
+        >Video BYU</a
+      >
+    </p>
+    
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block after_app_content %}
+{% endblock %}
+
+{% block app_actions %}
+{% endblock %}
+
+{% block content_dependent_styles %}
+  {{ block.super }}
+  <link href="{% static 'hydroviewer_colombia/css/manual.css' %}" rel="stylesheet"/>
+{% endblock %}

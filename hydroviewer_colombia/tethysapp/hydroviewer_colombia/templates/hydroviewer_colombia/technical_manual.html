@@ -1,0 +1,318 @@
+{% extends "hydroviewer_colombia/base.html" %} 
+{% load static %} 
+{% block import_gizmos %} 
+{% endblock %} 
+
+{% block header_buttons %}
+
+{% url "hydroviewer_colombia:home" as home %}
+<div class="header-button bi-button" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Aplicación">
+  <a  href=" {{ home }}" ><span class="bi bi-arrow-return-left"></span></a>
+</div>
+
+{% endblock %}
+
+{% block app_navigation_items %} 
+
+{% url "hydroviewer_colombia:home" as home %} 
+{% url "hydroviewer_colombia:user_manual" as user_manual %} 
+{% url "hydroviewer_colombia:technical_manual" as technical_manual %}
+
+<!-- <li class="{% if request.path == home %}active{% endif %}">
+  <a href="{{ home }}">Aplicación</a>
+</li>
+<li class="{% if request.path == user_manual %}active{% endif %}">
+  <a href="{{ user_manual }}">Manual de Usuario</a>
+</li>
+<li class="{% if request.path == technical_manual %}active{% endif %}">
+  <a href="{{ technical_manual }}">Manual Técnico</a>
+</li> -->
+
+
+<li class="nav-item"><a href=" {{ home }}" class="nav-link {% if request.path == home %}active{% endif %}">Aplicación</a></li>
+<li class="nav-item"><a href="{{ user_manual }}" class="nav-link {% if request.path == user_manual %}active{% endif %}">Manual de Usuario</a></li>
+<li class="nav-item"><a href="{{ technical_manual }}" class="nav-link {% if request.path == technical_manual %}active{% endif %}">Manual Técnico</a></li>
+
+{% endblock %}
+
+{% block app_content %}
+
+<div class="main_content">
+  <center>
+    <h1><strong>Manual Técnico</strong></h1>
+  </center>
+  <center>
+    <h2><strong>HYDROVIEWER COLOMBIA</strong></h2>
+  </center>
+
+  <div class="fb_1">
+    <div class="fb_11">
+      <center>
+        <img
+          id="logo"
+          src="{% static 'hydroviewer_colombia/images/hydroviewer_colombia_logo.jpg' %}"
+          style="width: 100px"
+        />
+      </center>
+    </div>
+
+    <div class="fb_12">
+      <p>
+        El servicio GEOGloWS ECMWF Streamflow utiliza un enfoque de modelización
+        hidrológica como servicio (HMaaS), que centraliza la ciberinfraestructura, la
+        capacidad humana y otros componentes de la modelización hidrológica. Utiliza
+        las mejores previsiones y conocimientos disponibles, junto con los últimos
+        avances en tecnologías de la información y la comunicación.
+      </p>
+    </div>
+  </div>
+
+  <center>
+    <img
+      id="logo"
+      src="{% static 'hydroviewer_colombia/images/imgs/imag1.png' %}"
+      style="width: 700px"
+    />
+  </center>
+
+  <p>
+    En el pasado, los organismos internacionales y locales han invertido millones
+    de dólares para desarrollar modelos hidrológicos a partir de fuentes de datos
+    globales. Este enfoque requiere que cada agencia pueda descargar los datos de
+    entrada (por ejemplo, información del terreno información sobre el terreno, el
+    uso de la tierra, la meteorología, etc.) para crear modelos. Posteriormente,
+    requieren disponer de la potencia de cálculo, los programas informáticos y la
+    capacidad humana necesarios para ejecutar y calibrar los modelos. Tener que
+    replicar en cada país es costoso en términos de ciberinfraestructura.
+    Además, estos sistemas son costosos y pon ende difcícil de mantener a largo
+    plazo porque las organizaciones que los utilizan carecen de recursos para
+    seguir manteniéndolos y operándolos cuando la fuente de financiación externa
+    se agota.
+  </p>
+
+  <p>
+    El servicio de previsión global de caudales GEOGloWS permite a los actores
+    locales centrarse en la resolución de problemas de gestión del agua, como las
+    inundaciones, la sequía y los problemas de seguridad hídrica y alimentaria,
+    proporcionando la información sobre el agua que necesitan para tomar
+    decisiones. También beneficia a la economía mundial al proporcionar
+    información sobre el agua a los sectores que necesitan tomar decisiones.
+  </p>
+
+  <h3>
+    <strong>GEOGloWS ECMWF Streamflow Services (GESS) </strong>
+  </h3>
+
+  <p>
+    El GEOGloWS ECMWF Streamflow Services (GESS) es un modelo hidrológico global y
+    se compone de 52 ensambles que provee a los usuarios:
+  </p>
+
+  <ol>
+    <li>
+      Un ensamble de pronóstico de caudales a corto plazo de 51 miembros con un
+      horizonte de 15 días. La resolución temporal del pronóstico varía con los
+      días de avance del mismo. Los primeros 6 días tienen una resolución temporal
+      de 3 horas. De los días 7 al día 15 la resolución temporal es de 6 horas.
+    </li>
+    <li>
+      Un pronóstico de caudales a corto plazo de alta resolución con un horizonte
+      de 10 días. La resolución temporal del pronóstico varía con los días de
+      avance del mismo. Los primeros 4 días tienen una resolución temporal de 1
+      hora. Los días 5 y 6 tienen una resolución temporal de 3 horas. Del día 7 al
+      día 10, la resolución temporal es de 6 horas.
+    </li>
+    <li>
+      Una simulación histórica desde el 01/01/1979 al presente (con 2 ó 3 meses de
+      atraso) a resolución diaria.
+    </li>
+  </ol>
+
+  <p>
+    El pronóstico hidrológico es calculado a partir del sistema de pronósticos
+    meteorológicos del Centro Europeo de Previsiones Meteorológicas a Plazo Medio
+    (ECMWF por sus siglas en inglés European Centre for Medium-Range Weather
+    Forecasts) el cual tiene 51 miembros con una resolución espacial de 18 km para
+    los primeros 10 días (días del 1 al 10) y 36 km de resolución para los
+    siguientes 5 días (días del 11 al 15) y un miembro de alta resolución con un
+    horizonte de 10 días con una resolución espacial de 8 km y temporal horaria.
+    La simulación histórica usa el reánalisis ERA5 que tiene una resolución
+    espacial de 30 km y una resolución temporal horaria.
+  </p>
+
+  <center>
+    <img
+      id="ecmw"
+      src="{% static 'hydroviewer_colombia/images/imgs/ecmw.png' %}"
+      style="width: 700px"
+    />
+  </center>
+
+  <p>
+    Estos pronósticos meteorológicos son convertidos a escorrentía usando el
+    modelo hidrológico HTESSEL. Posteriormente, los valores de escorrentía son
+    reducidos de escala usando un método de grilla a vector con área ponderada.
+    Finalmente, usando el modelo RAPID, los valores de escorrentía son transitados
+    a través de la red de drenaje.
+  </p>
+  <center>
+    <img
+      id="downscaling"
+      src="{% static 'hydroviewer_colombia/images/imgs/dowscaling.png' %}"
+      style="width: 700px"
+    />
+  </center>
+
+  <p>
+    Adicionalmente, la simulación histórica, también es convertida a escorrentía
+    usando el modelo HTSSEL. Al igual que con el pronóstico, estos valores son
+    reducidos de escala con la metodología de grilla a vector con área ponderada,
+    para posteriormente ser transitados hidrológicamente usando el modelo RAPID.
+  </p>
+
+  <p>
+    Los resultados de la simulación histórica son usados para definir los períodos
+    de retorno que definirán el nivel de alerta por inundación en cada tramo de
+    río. Los caudales correspondiente a los períodos de retorno de 2, 5, 10, 25,
+    50 y 100 años por medio de la distribución de probabilidad de probabilidad Gumbel.
+  </p>
+
+  <p>
+    Estos servicios están disponibles para casi cualquier río del mundo (cerca de
+    un millón) con área de drenaje inferior a 200km<sup>2</sup> y pueden ser
+    accesados a través de servicios web, usando una aproximación llamada
+    Modelación Hidrológica como un Servicio (HMaaS, por sus siglas inglés
+    Hydrologic Modeling as a Service). Las regiones donde se ejecuta el modelo en
+    la actualidad se muestran a continuación:
+  </p>
+
+  <center>
+    <img
+      id="geoglowsMundo"
+      src="{% static 'hydroviewer_colombia/images/imgs/geoglowsMundo.png' %}"
+      style="width: 400px"
+    />
+  </center>
+
+  <p>
+    En Ecuador, el servicio fue personalizado mediante la extracción de los ríos
+    del país:
+  </p>
+
+  <center>
+    <img
+      id="ecuadorextract"
+      src="{% static 'hydroviewer_colombia/images/imgs/colombiaextrac.png' %}"
+      style="width: 700px"
+    />
+  </center>
+
+  <h3>
+    <strong>Modelación hidrológica como servicio (HMaaS)</strong>
+  </h3>
+
+  <p>
+    Los servicios de flujo de agua se alimentan de la ciberinfraestructura del
+    ECMWF utilizando su previsión meteorológica de conjunto a través del modelo de
+    superficie terrestre HTESSEL para producir la escorrentía global en una
+    cuadrícula de 16x16 kilómetros. Este resultado se asigna a las cuencas
+    hidrográficas de GEOGloWS y se dirige a través de la red fluvial utilizando el
+    enrutamiento Muskingum, tal y como se implementa en el software RAPID para
+    producir una previsión de 15 días en cada río.
+  </p>
+  <p>
+    Los datos históricos retrospectivos del ERA5 se ejecutan en el mismo para
+    producir los datos históricos (aproximadamente de 40 años) de caudales que se
+    utiliza para derivar los periodos de retorno.
+  </p>
+
+  <h3>
+    <strong>Modelo de flujo de trabajo y componentes</strong>
+  </h3>
+
+  <p>
+    El resultado del pronóstico, junto con un servicio de cartografía web
+    producido y alojado por Esri, se construyen y entregan por medio de una API
+    para que se puedan crear aplicaciones web personalizadas y de otro tipo a
+    partir del HMaaS.
+  </p>
+
+  <h6>
+    <strong>Recursos de interés: Ejercicio práctico</strong>
+  </h6>
+  <p>
+    Por favor siga las instrucciones del video para seguir el colab y haga una
+    copia del mismo en su cuenta de google.
+  </p>
+  <h6>Uso de la API - GEOGloWS ECMWF Streamflow Services - Colombia</h6>
+  <p>
+    <a
+      href="https://drive.google.com/file/d/1faYpE2VeuhCcs68dJL-SIzLR-DE__2Lx"
+      target="_blank"
+      >Google Colab</a
+    >
+  </p>
+  <p>
+    <a
+      href="https://drive.google.com/file/d/1AwJXlT84sSujaf8ARJcZvq5j9A0_-pWj"
+      target="_blank"
+      >Video</a
+    >
+  </p>
+
+  <h5><strong>Páginas de Interés</strong></h5>
+  <p>
+    Página de IDEAM:
+    <a
+      class="reference external"
+      href="http://www.ideam.gov.co/"
+      target="_blank"
+      >IDEAM</a
+    >
+  </p>
+  <p>
+    Página de SERVIR-Amazonia:
+    <a
+      class="reference external"
+      href="https://servir.ciat.cgiar.org/?lang=es"
+      target="_blank"
+      >SERVIR-Amazonia</a
+    >
+  </p>
+  <p>
+    Página del CIAT:
+    <a class="reference external" href="https://ciat.cgiar.org/?lang=es" target="_blank"
+      >CIAT</a
+    >
+  </p>
+  <p>
+    Página de Laboratorio de Hydroinformática Brigham Young University:
+    <a
+      class="reference external"
+      href="https://hydroinformatics.byu.edu/"
+      target="_blank"
+      >Página BYU</a
+    >
+  </p>
+  <p>
+    Video de Brigham Young University-GEOGloWS:
+    <a
+      class="reference external"
+      href="https://youtu.be/PLG8U8AQmXY"
+      target="_blank"
+      >Video BYU</a
+    >
+  </p>
+</div>
+{% endblock %} 
+
+{% block after_app_content %} 
+{% endblock %} 
+
+{% block content_dependent_styles %}
+  {{ block.super }}
+  <link href="{% static 'hydroviewer_colombia/css/manual.css' %}" rel="stylesheet"/>
+{% endblock %}
+
+{% block app_actions %} 
+{% endblock %}

@@ -1,0 +1,32 @@
+body {
+    overflow-y: hidden !important;
+}
+
+#app-content-wrapper {
+    height: auto !important;
+}
+
+#inner-app-content {
+    height: calc("100% - 50px") !important;
+    overflow: hidden !important;
+    padding: 0px !important;
+}
+
+#app-content {
+    min-height: 50% !important;
+    height: calc("100% - 50px") !important;
+    overflow: hidden !important;
+}
+
+#app-header .tethys-app-header {
+    height: 50px !important;
+}
+
+.app-title {
+    font-size: 21px !important;
+    font-weight: 600;
+}
+
+.icon-wrapper {
+    margin-left: 15px !important;
+}
