@@ -24,6 +24,7 @@ import hydrostats.data as hd
 import HydroErr as he
 import plotly.graph_objs as go
 import datetime as dt
+import requests
 
 # Base
 import os
@@ -242,6 +243,55 @@ def get_forecast_record_date(comid, date):
     return(outdf)
 
 
+def get_fews_data(station_code):
+    # TODO : Change with fews postgres implementation
+    url = 'http://fews.ideam.gov.co/colombia/jsonH/00' + station_code + 'Hobs.json'
+
+    try:
+        # Call data
+        f = requests.get(url, verify=False)
+        data = f.json()
+
+        # Extract data
+        observedDischarge = (data.get('obs'))
+        sensorDischarge = (data.get('sen'))
+        observedDischarge = (observedDischarge.get('data'))
+        sensorDischarge = (sensorDischarge.get('data'))
+        datesObservedDischarge = [row[0] for row in observedDischarge]
+        observedDischarge = [row[1] for row in observedDischarge]
+        datesSensorDischarge = [row[0] for row in sensorDischarge]
+        sensorDischarge = [row[1] for row in sensorDischarge]
+
+        # Build dataframe discharge
+        observedDischarge_df = pd.DataFrame(data={'date' : datesObservedDischarge,
+                                                  'water level cm' : observedDischarge})
+        observedDischarge_df['date'] = pd.to_datetime(observedDischarge_df['date'], format='%Y/%m/%d %H:%M')
+        observedDischarge_df['water level cm'] = observedDischarge_df['water level cm'].astype(float) * 100
+        observedDischarge_df.dropna(inplace=True)
+        observedDischarge_df.set_index('date', inplace = True)
+
+        # Build dataframe sensor
+        sensorDischarge_df   = pd.DataFrame(data={'date' : datesSensorDischarge,
+                                                  'water level cm' : sensorDischarge})
+        sensorDischarge_df['date'] = pd.to_datetime(sensorDischarge_df['date'], format='%Y/%m/%d %H:%M')
+        sensorDischarge_df['water level cm'] = sensorDischarge_df['water level cm'].astype(float) * 100
+        sensorDischarge_df.dropna(inplace=True)
+        sensorDischarge_df.set_index('date', inplace=True)
+
+    except Exception as e:
+
+        # Build discharge dataframe
+        observedDischarge_df = pd.DataFrame(data = {'date' : [pd.NaT],
+                                                    'water level cm' : [np.nan]})
+        observedDischarge_df.set_index('date', inplace = True)
+
+        # Build sensor dataframe
+        sensorDischarge_df = pd.DataFrame(data = {'date' : [pd.NaT],
+                                                  'water level cm' : [np.nan]})
+        sensorDischarge_df.set_index('date', inplace=True)
+
+    return observedDischarge_df, sensorDischarge_df
+
 
 ####################################################################################################
 ##                                      PLOTTING FUNCTIONS                                        ##
@@ -348,7 +398,7 @@ def _build_title(base, title_headers):
 
 
 # Forecast plot
-def get_forecast_plot(comid, site, stats, rperiods, records):
+def get_forecast_plot(comid, site, stats, rperiods, records, obs_data):
     corrected_stats_df = stats
     corrected_rperiods_df = rperiods
     fixed_records = records
@@ -356,7 +406,7 @@ def get_forecast_plot(comid, site, stats, rperiods, records):
     hydroviewer_figure = geoglows.plots.forecast_stats(stats=corrected_stats_df,)
     layout = go.Layout(
         title = _build_title('Forecasted Water Level', {'Site': site, 'Reach ID': comid, 'bias_corrected': True}),
-        yaxis = {'title': 'Water Level (m)', 'range': [0, 'auto']},
+        yaxis = {'title': 'Water Level (cm)', 'range': [0, 'auto']},
     )
     hydroviewer_figure.update_layout(layout)
     x_vals = (corrected_stats_df.index[0], corrected_stats_df.index[len(corrected_stats_df.index) - 1], corrected_stats_df.index[len(corrected_stats_df.index) - 1], corrected_stats_df.index[0])
@@ -418,6 +468,19 @@ def get_forecast_plot(comid, site, stats, rperiods, records):
     hydroviewer_figure.add_trace(template(f'50 Year: {r50}', (r50, r50, r100, r100), colors['50 Year']))
     hydroviewer_figure.add_trace(template(f'100 Year: {r100}', (r100, r100, max(r100 + r100 * 0.05, max_visible), max(r100 + r100 * 0.05, max_visible)), colors['100 Year']))
     ##
+
+    ## Fix axis in obs data for plot
+    obs_data['fix_data'] = [data_i[data_i.index > corrected_records_plot.index[0]] for data_i in obs_data['data']]
+
+    # Add observed data
+    for num, data in enumerate(obs_data['fix_data']):
+        hydroviewer_figure.add_trace(go.Scatter(
+                                        name = obs_data['name'][num],
+                                        x    = data.index,
+                                        y    = data.iloc[:, 0].values,
+                                        line = dict(color=obs_data['color'][num])
+                                    ))
+
     hydroviewer_figure['layout']['xaxis'].update(autorange=True)
     return(hydroviewer_figure)
 
@@ -522,6 +585,9 @@ def get_data(request):
     corrected_forecast_records = get_corrected_forecast_records(forecast_records, simulated_data, observed_data)
     corrected_return_periods = get_return_periods(station_comid, corrected_data)
 
+    # FEWS data
+    obs_fews, sen_fews = get_fews_data(station_code)
+
     # Stats for raw and corrected forecast
     ensemble_stats = get_ensemble_stats(ensemble_forecast)
     corrected_ensemble_stats = get_ensemble_stats(corrected_ensemble_forecast)
@@ -587,7 +653,10 @@ def get_data(request):
                                             site = station_name, 
                                             stats = corrected_ensemble_stats, 
                                             rperiods = corrected_return_periods, 
-                                            records = corrected_forecast_records)
+                                            records = corrected_forecast_records,
+                                            obs_data = {'data'  : [obs_fews, sen_fews],
+                                                        'color' : ['blue', 'red'],
+                                                        'name'  : ['Nivel observado', 'Nivel sensor']})
     
     #returning
     context = {
@@ -661,6 +730,9 @@ def get_raw_forecast_date(request):
 
     # Close conection
     conn.close()
+
+    # FEWS data
+    obs_fews, sen_fews = get_fews_data(station_code)
     
     # Plotting raw forecast
     ensemble_forecast_plot = get_forecast_plot(
@@ -668,7 +740,10 @@ def get_raw_forecast_date(request):
                                 site = station_name, 
                                 stats = ensemble_stats, 
                                 rperiods = return_periods, 
-                                records = forecast_records).update_layout(width = plot_width).to_html()
+                                records = forecast_records,
+                                obs_data = {'data'  : [obs_fews, sen_fews],
+                                                        'color' : ['blue', 'red'],
+                                                        'name'  : ['Nivel observado', 'Nivel sensor']}).update_layout(width = plot_width).to_html()
     
     # Forecast table
     forecast_table = geoglows.plots.probabilities_table(
@@ -683,7 +758,10 @@ def get_raw_forecast_date(request):
                                     site = station_name, 
                                     stats = corrected_ensemble_stats, 
                                     rperiods = corrected_return_periods, 
-                                    records = corrected_forecast_records).update_layout(width = plot_width).to_html()
+                                    records = corrected_forecast_records,
+                                    obs_data = {'data'  : [obs_fews, sen_fews],
+                                                        'color' : ['blue', 'red'],
+                                                        'name'  : ['Nivel observado', 'Nivel sensor']}).update_layout(width = plot_width).to_html()
     # Corrected forecast table
     corr_forecast_table = geoglows.plots.probabilities_table(
                                     stats = corrected_ensemble_stats,
@@ -698,7 +776,7 @@ def get_raw_forecast_date(request):
     })
     
 
-    return render(request, 'national_water_level_forecast_colombia/home.html', context)
+    # return render(request, 'national_water_level_forecast_colombia/home.html', context)
 
 ############################################################
 @controller(name = "user_manual",

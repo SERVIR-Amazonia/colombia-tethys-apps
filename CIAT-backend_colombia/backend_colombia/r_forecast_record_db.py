@@ -108,21 +108,15 @@ class Update_forecast_record_db:
 			# Create engine
 			db = create_engine(db_text, pool_timeout=120)
 
-			# '''
-			# Download data parallelization
-			with concurrent.futures.ThreadPoolExecutor(max_workers = 10) as executor:
-				list(executor.map(lambda c : self.__download_data__(c, url_fun, start_date, db, lock),
-								  comids)
-					)
-			# '''
-
-			'''
-			# Download data no parallelization
-			_ = [self.__parallelization__(c, url_fun, start_date, db) for c in comids]
-			# '''
-			
-			# Close engine
-			db.dispose()
+			try:
+				# Download data parallelization
+				with concurrent.futures.ThreadPoolExecutor(max_workers = 10) as executor:
+					list(executor.map(lambda c : self.__download_data__(c, url_fun, start_date, db, lock),
+									comids)
+						)
+			finally:
+				# Close engine
+				db.dispose()
 			
 			print('Update : {:.0f} %, Delay : {:.4f} min.'.format(100 * chunk / n_chunks, (time.time() - before) / 60))
 

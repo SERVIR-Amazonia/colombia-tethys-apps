@@ -26,7 +26,7 @@ class Update_historical_simulation_db:
 		before = time.time()
 
 		# Postgres secure data
-		n_chunks = 10
+		n_chunks = 100
 
 		# Change the work directory
 		user = os.getlogin()
@@ -67,9 +67,10 @@ class Update_historical_simulation_db:
 
 		# ------------------- MAIN --------------------
 		# Establish connection
-		db   = create_engine("postgresql+psycopg2://{0}:{1}@localhost:5432/{2}".format(DB_USER,
-																					   pgres_password,
-																					   pgres_databasename))
+		db_text = "postgresql+psycopg2://{0}:{1}@localhost:5432/{2}".format(DB_USER,
+																			pgres_password,
+																			pgres_databasename)
+		db   = create_engine(db_text)
 		try:
 		# Connect to database out of for loop
 			conn = db.connect()
@@ -97,10 +98,16 @@ class Update_historical_simulation_db:
 			# Create look
 			lock = threading.Lock()
 
-			# Download data and insert
-			with concurrent.futures.ThreadPoolExecutor(max_workers = 4) as executor:
-				_ = list(executor.map(lambda c : self.__download_data__(c, url_fun, db, lock),
-									  comids))
+			# Build engine
+			db   = create_engine(db_text)
+
+			try:
+				# Download data and insert
+				with concurrent.futures.ThreadPoolExecutor(max_workers = 10) as executor:
+					_ = list(executor.map(lambda c : self.__download_data__(c, url_fun, db, lock),
+										comids))
+			finally:
+				db.dispose()
 
 			print('Update : {:.0f} %, Delay : {:.4f} seg.'.format(100 * chunk / n_chunks, time.time() - before))
 
@@ -140,6 +147,10 @@ class Update_historical_simulation_db:
 			df = data_request(url=url_comid, params=params_comid)
 			df = self.__build_dataframe__(df, url_comid, params_comid)
 
+		# Fix negative values
+		if df[self.dict_aux['Data column name']].min() < 0:
+			df[self.dict_aux['Data column name']] = df[self.dict_aux['Data column name']] - df[self.dict_aux['Data column name']].min()
+		
 		# Fix column names for comid identify
 		df.rename(columns = {self.dict_aux['Data column name'] : \
 							 self.dict_aux['Data column name prefix'] + str(comid)},

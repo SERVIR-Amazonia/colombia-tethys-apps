@@ -101,13 +101,14 @@ class Update_forecast_db:
 
 			# Create engine
 			db   = create_engine(db_text, pool_timeout=120)
+			try:
+				# Download data from comid
+				with concurrent.futures.ThreadPoolExecutor(max_workers = 10) as executor:
+					_ = list(executor.map(lambda c : self.__download_data__(c, url_fun, db, lock), 
+										comids))
+			finally:
+				db.dispose()
 
-			# Download data from comid
-			with concurrent.futures.ThreadPoolExecutor(max_workers = 10) as executor:
-				_ = list(executor.map(lambda c : self.__download_data__(c, url_fun, db, lock), 
-									  comids))
-
-			db.dispose()
 			print('Update : {:.0f} %, Delay : {:.4f} seg'.format(100 * chunk / n_chunks, time.time() - before))
 
 
