@@ -1,68 +1,227 @@
-{% extends base_name|add:"/base.html" %}
+{% extends "hydroviewer_colombia/app_base.html" %}
+{% load static %}
 {% load tethys_gizmos %}
+
 {% block import_gizmos %}
     {% import_gizmo_dependency plotly_view %}
 {% endblock %}
 
-{% block app_content %}
-<div id="map" class="map"></div>
+{% block title %}{{ tethys_app.name }}{% endblock %}
+
+{% block app_icon %}
+  {# The path you provided in your app.py is accessible through the tethys_app.icon context variable #}
+  <img src="{% if 'http' in tethys_app.icon %}{{ tethys_app.icon }}{% else %}{% static tethys_app.icon %}{% endif %}" />
+{% endblock %}
+
+{# The name you provided in your app.py is accessible through the tethys_app.name context variable #}
+{% block app_title %}{{ tethys_app.name }}{% endblock %}
+
+{% block app_navigation_items %}
 {% endblock %}
 
 {% block header_buttons %}
-  {% if zoom_info %}
-  <div class="d-none" style="margin-right: 15px;">
-    {% gizmo text_input zoom_info %}
+  <div class="header-button glyphicon-button" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Data panel">
+    <a data-bs-toggle="modal" data-bs-target="#panel-modal"><i class="bi bi-graph-up"></i></a>
   </div>
-  {% endif %}
-  {% if model_input %}
-    <div id="modelSelect" style="margin-right: 15px;">
-      {% gizmo select_input model_input %}
-    </div>
-  {% endif %}
-
-  <div class="header-button bi-button" data-bs-toggle="tooltip" data-bs-placement="bottom" title="About">
-    <a data-bs-toggle="modal" data-bs-target="#about"><span class="bi bi-question-lg"></span></a>
+  <div class="header-button glyphicon-button" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Help">
+    <a data-bs-toggle="modal" data-bs-target="#help-modal"><i class="bi bi-question-circle"></i></a>
   </div>
 {% endblock %}
+
+
+{% block app_content %}
+  <div id="map-container"></div>
+  <script type="text/javascript"> 
+      let stations  = "{{ data|safe }}";
+  </script>
+{% endblock %}
+
+
 
 {# Use the after_app_content block for modals #}
 {% block after_app_content %}
-
-<!-- About Modal -->
-<div class="modal fade" id="about" tabindex="-1" role="dialog" aria-labelledby="about-modal-label">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <!-- <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-d-none="true">&times;</span></button> -->
-                <h2 class="modal-title" id="about-modal-label">About HydroViewer</h2>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p id="overview"><b>
-                    This web application was created to allow users to visualize hydrologic model results
-                    from different sources. It currently displays GloFAS and LDAS model results.
-                </b></p>
-                <h3>How it works</h3>
-                <h6>1. Click on Get Started.</h6>
-                <h6>2. Select a hydrologic model and a corresponding watershed of interest.</h6>
-                <h6>3. Once you click select a watershed, the map will automatically zoom to that specific watershed.</h6>
-                <h6>4. Click on any of the stream reaches within the watershed.</h6>
-                <h6>6. A hydrograph for the selected reach with the most current streamflow result will be displayed
-                    in the graph area next to the map.</h6>
-                <h6>7. If previous dates are available, the Select Date dropdown will be displayed on top of the graph.
-                    Select any of the available dates to display the forecast for that specific date in the graph.</h6>
-                <h6>8. Click the close button to exit the application.</h6>
-
-                <h5>Additional Resources:</h5>
-                <p><a href="https://www.ecmwf.int/en/about/what-we-do/global-forecasts" target="_blank">ECMWF Global Forecasts</a></p>
-                <p><a href="http://rapid-hub.org/" target="_blank">RAPID River Routing Model</a></p>
-                <p><a href="https://streamflow-prediction-tool.readthedocs.io/en/latest/" target="_blank">StreamFlow Prediction Tool</a></p>
-            </div>
+  <!-- Example Modal --> 
+  <div class="modal fade" id="help-modal" tabindex="-1" role="dialog" aria-labelledby="help-modal-label">
+    <div class="modal-dialog  modal-dialog-centered modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="help-modal-label"> <strong>Hydroviewer Colombia</strong></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
+        <div class="modal-body">
+          <p> 
+            <strong>Historical Validation Tool personalizada para Colombia</strong> 
+            es una aplicación para la visualización de la simulación histórica y pronóstico hidrologico 
+            del modelo hidrológico global GEOGloWS ECMWF en Colombia.
+          </p>
+          <p> El usuario podrá hacer click en cualquier río del Colombia para consultar su pronóstico</p>
+          <p style="color:#e61e29;"> <strong>AVISO IMPORTANTE: </strong></p>
+             <p style="color:#e61e29;">
+              El usuario debe considerar que estas simulaciones y pronósticos son una referencia
+              que utiliza la herramienta de predicción del GEOGloWS ECMWF para estimar el rango más probable 
+              de caudales por encima o debajo del promedio histórico simulado.</p>
+           </p>
+           <ol style="color:#e61e29;">
+             <li> El usuario debe tener en cuenta la probabilidad de que una predicción no sea siempre  correcta.</li>
+             <li> El usuario de esta herramienta acepta de antemano la forma y uso de la información.</li>
+           </ol style="color:#e61e29;">
+          <p><strong>Recursos adicionales:</strong></p>
+          <p>
+            <a href="{% url 'hydroviewer_colombia:user_manual' %}">Manual de Usuario</a>
+            &nbsp &nbsp
+            <a href="{% url 'hydroviewer_colombia:technical_manual' %}">Manual Técnico</a>
+          </p>
+        </div>
+        <div class="modal-footer">
+          <div class="FootNote">
+            <p style ><sup>
+                Fuentes: La red de drenaje ha sido obtenida del modelo GEOGloWS ECMWF;
+                Estaciones hidrológicas: IDEAM</sup> 
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
-</div>
+  </div>
+  
+
+
+    <!-- Data Station Panel -->
+    <div class="modal fade" id="panel-modal" tabindex="-1" role="dialog" aria-labelledby="panel-modal-label">
+      <div class="modal-dialog  modal-dialog-centered modal-xl" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="modal-title" id="panel-modal-label">
+              <div>
+                <img src="{% static 'hydroviewer_colombia/images/logos.png' %}" width="600px">
+              </div>
+              <div>
+                <div class="container">
+                  <div class="row">
+                    <div class="col">
+                      <h5 id="panel-title-custom">South America</h5>
+                    </div>
+                  </div>
+                  <div class="row" id="panel-station-information">
+                    <div class="col">
+                      <div class="row-station" id="station-comid-custom"> <b>COMID:</b> &nbsp   </div>
+                      <!--
+                      <div class="row-station" id="station-river-custom"> <b>RIO:</b> &nbsp   </div>
+                      -->
+                    </div>
+                    <div class="col">
+                      <div class="row-station" id="station-latitude-custom"> <b>LATITUD:</b> &nbsp   </div>
+                      <div class="row-station" id="station-longitude-custom"> <b>LONGITUD:</b> &nbsp   </div>
+                    </div>
+                    <div class="col">
+                      <div class="row-station" id="station-locality1-custom"> <b>ZONA HIDROGRÁFICA:</b> &nbsp   </div>
+                      <div class="row-station" id="station-locality2-custom"> <b>SUBZONA HIDROGRÁFICA :</b> &nbsp   </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+          </div>
+          <div id="modal-body-panel-custom" class="modal-body" style="min-width: 100% !important;">
+              <ul class="nav nav-tabs" id="panel-tab" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button 
+                    class="nav-link active" 
+                    id="hydrograph-tab" 
+                    data-bs-toggle="tab" 
+                    data-bs-target="#hydrograph" 
+                    type="button" 
+                    role="tab" 
+                    aria-controls="hydrograph" 
+                    aria-selected="true"> Simulación histórica </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button 
+                    class="nav-link" 
+                    id="visual-analisis-tab" 
+                    data-bs-toggle="tab" 
+                    data-bs-target="#visual-analisis" 
+                    type="button" 
+                    role="tab" 
+                    aria-controls="visual-analisis" 
+                    aria-selected="false">Análisis visual</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button 
+                    class="nav-link" 
+                    id="forecast-tab" 
+                    data-bs-toggle="tab"
+                    data-bs-target="#forecast" 
+                    type="button" 
+                    role="tab" 
+                    aria-controls="forecast" 
+                    aria-selected="false"> Pronóstico </button>
+                </li>
+              </ul>
+              <div class="tab-content" id="panel-tab-content">
+                <div class="tab-pane fade show active" id="hydrograph" role="tabpanel" aria-labelledby="hydrograph-tab">
+                  <div class="loading-container" style="height: 350px; padding-top: 12px;"> 
+                    <div class="loading"> 
+                      <h2>LOADING DATA</h2>
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
+                    </div>
+                  </div>
+                </div>
+                <div class="tab-pane fade" id="visual-analisis" role="tabpanel" aria-labelledby="visual-analisis-tab">
+                  <div class="loading-container" style="height: 350px; padding-top: 12px;">
+                    <br> 
+                    <div class="loading"> 
+                      <h2>LOADING DATA</h2>
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
+                    </div>
+                  </div>
+                </div>
+                <div class="tab-pane fade" id="forecast" role="tabpanel" aria-labelledby="forecast-tab">
+                  <div class="loading-container" style="height: 350px; padding-top: 12px;"> 
+                    <div class="loading"> 
+                      <h2>LOADING DATA</h2>
+                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
+                    </div>
+                  </div>
+                </div>
+                
+              </div>
+          </div>
+        </div>
+      </div>
+    </div>
 {% endblock %}
 
-{% block app_actions %}
 
+{% block content_dependent_styles %}
+  {{ block.super }}
+  <link href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.15.2/css/selectize.default.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.9/dist/flatpickr.min.css" rel="stylesheet" >
+  <link href="{% static 'hydroviewer_colombia/css/main.css' %}" rel="stylesheet"/>
+  <link href="{% static 'hydroviewer_colombia/css/map.css' %}" rel="stylesheet"/>
+  <link href="{% static 'hydroviewer_colombia/css/loader.css' %}" rel="stylesheet"/>
+  <link href="{% static 'hydroviewer_colombia/css/panel.css' %}" rel="stylesheet"/>
+  <link href="{% static 'hydroviewer_colombia/css/map_control.css' %}" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+{% endblock %}
+
+{% block scripts %}
+  {{ block.super }}
+  <script src="{% static 'hydroviewer_colombia/libs/Leaflet/leaflet.js' %}" type="text/javascript"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.15.2/js/selectize.min.js" type="text/javascript"></script>
+  <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+  <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.9/dist/flatpickr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.9/dist/l10n/es.min.js"></script>
+  <script src="{% static 'hydroviewer_colombia/libs/Leaflet.GeometryUtil/src/leaflet.geometryutil.js' %}"></script>
+  <script src="{% static 'hydroviewer_colombia/libs/Leaflet.AlmostOver/src/leaflet.almostover.js' %}"></script>
+  <script src="{% static 'hydroviewer_colombia/js/utils.js' %}" type="text/javascript"></script>
+  <script src="{% static 'hydroviewer_colombia/js/map.js' %}" type="text/javascript"></script>
+  <script src="{% static 'hydroviewer_colombia/js/map_control.js' %}" type="text/javascript"></script>
+  <script src="{% static 'hydroviewer_colombia/js/main.js' %}" type="text/javascript"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
 {% endblock %}

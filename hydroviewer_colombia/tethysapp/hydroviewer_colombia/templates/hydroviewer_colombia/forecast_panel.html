@@ -1,0 +1,16 @@
+{% load tethys_gizmos %}
+
+{% block import_gizmos %}
+    {% import_gizmo_dependency plotly_view %}
+    {% import_gizmo_dependency datatable_view %}
+    {% import_gizmo_dependency date_picker %}
+{% endblock %}
+
+{% block forecast_panel %}  
+<div class="container-fluid" id="ensemble_forecast_plot">
+    {% gizmo forecast_plot %}
+</div>
+<div class="container-fluid" id="forecast-table">
+    {{ forecast_table|safe }}
+</div>
+{% endblock %}

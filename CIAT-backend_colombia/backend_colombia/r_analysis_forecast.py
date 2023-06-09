@@ -26,7 +26,7 @@ class Update_alarm_level:
 		try:
 			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
 		except:
-			os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
+			os.chdir("/home/jrc/colombia-tethys-apps/CIAT-backend_colombia/backend_colombia/")
 
 		# Import enviromental variables
 		load_dotenv()

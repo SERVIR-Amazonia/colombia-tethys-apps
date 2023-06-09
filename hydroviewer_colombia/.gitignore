@@ -7,6 +7,6 @@
 *.db
 *.sqlite
 *.DS_Store
-.idea
-.idea/*
-/build
+.idea/
+services.yml
+.env

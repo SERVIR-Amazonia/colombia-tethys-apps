@@ -25,7 +25,7 @@ class Update_drainage_db:
 		try:
 			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
 		except:
-			os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
+			os.chdir("/home/jrc/colombia-tethys-apps/CIAT-backend_colombia/backend_colombia/")
 
 
 		# Import enviromental variables
@@ -40,43 +40,25 @@ class Update_drainage_db:
 
 		pgres_tablename    = 'drainage'
 
-		# Hydroshare wfs data to download
-		id_HS  = 'HS-cff2657bc8244560b559320162bf8ce4'
-		layer  = 'south_america-colombia-geoglows-drainage_line'
-		url    = f"https://geoserver.hydroshare.org/geoserver/{id_HS}/ows"
-		params = {'service'     : 'WFS',
-				  'version'     : '1.0.0',
-				  'request'     : 'GetFeature',
-				  'typeName'    : f'{id_HS}%3A{layer}',
-				  'maxFeatures' : '9999'}
-
-		columns_to_extract = ['HydroID'] 
-
 		# ------------------- MAIN -------------------
-		# Establish connection
-		db   = create_engine("postgresql+psycopg2://{0}:{1}@localhost:5432/{2}".format(DB_USER,
-																					   pgres_password, 
-																					   pgres_databasename))
+		rv = pd.read_csv('./data/drainage_db.csv')
+		rv.drop('fid', axis=1, inplace=True)
 
-		# Build hydroshare link
-		full_url = url + '?' + '&'.join([ f'{key}={value}' for key, value in params.items() ])
-
-		# Download drainage list
-		rv = get_data_wfs(url   = full_url,
-						  id_HS = id_HS,
-						  layer = layer)
-		rv = pd.DataFrame(rv)
-		rv = rv[columns_to_extract].copy()
+		# rv = rv[columns_to_extract].copy()
 		rv.rename(columns = {col : col.lower() for col in rv.columns}, inplace = True)
 
 		# Insert alert column
 		rv['alert'] = ['R0'] * len(rv)
 
-		try:
-			conn = db.connect()
+		# Establish connection
+		db   = create_engine("postgresql+psycopg2://{0}:{1}@localhost:5432/{2}".format(DB_USER,
+																					   pgres_password, 
+																					   pgres_databasename))
+
+		conn = db.connect()
+		try:	
 			# Insert to database
 			rv.to_sql(pgres_tablename, con=conn, if_exists='replace', index=False)
-
 		finally:
 			# Close connection
 			conn.close()

@@ -1,3 +1,0 @@
-'Amazon_River',
-'Northwest_Coast',
-'Orinoco_River',

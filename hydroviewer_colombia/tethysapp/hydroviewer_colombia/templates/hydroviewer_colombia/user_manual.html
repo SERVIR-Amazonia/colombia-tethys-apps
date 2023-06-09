@@ -1,4 +1,4 @@
-{% extends "hydroviewer_colombia/base.html" %}
+{% extends "hydroviewer_colombia/app_base.html" %}
 {% load static %}
 
 {% block import_gizmos %}
@@ -38,7 +38,7 @@
     <div class="fb_11">
       <center>
         <img id="logo"  
-            src="{% static 'hydroviewer_colombia/images/hydroviewer_colombia_logo.jpg' %}"
+            src="{% static 'hydroviewer_colombia/images/icon.gif' %}"
             style="width: 100px;">
       </center>
     </div>
@@ -66,7 +66,7 @@
       ríos global del GEOGloWS ECMWF. </p>
 
     <center>
-      <img src="{% static 'hydroviewer_colombia/images/imgs/hydroviewerpag.png' %}"
+      <img src="{% static 'hydroviewer_colombia/images/manuals/hydroviewerpag.png' %}"
            style="width: 700px;">
     </center>
 
@@ -80,19 +80,14 @@
       días de pronóstico.</p>
 
     <p>Al seleccionar los botones de las alertas, en caso de existir alguna en el mapa base, 
-      se observarán triángulos de alerta según el periodo de retorno. Como se muestra en la 
-      imagen a cnotinuación.</p>
-
-    <center>
-      <img src="{% static 'hydroviewer_colombia/images/imgs/hydroviewer_alertas.png' %}"
-           style="width: 500px;">
-    </center>
+      se observarán la simbologia de alerta según el periodo de retorno. Como se muestra en la 
+      imagen anterior.</p>
 
     <p>En la pantalla de visualización puede observar los botones desplegables para seleccionar 
       el departamento de interés, como ejemplo se muestra el departamento del Choco.</p>
 
     <center>
-      <img src="{% static 'hydroviewer_colombia/images/imgs/hydroviewer_ejemplo_choco.png' %}"
+      <img src="{% static 'hydroviewer_colombia/images/manuals/hydroviewer_ejemplo_choco.png' %}"
            style="width: 200px;">
     </center>
 
@@ -100,7 +95,7 @@
       (S.Z.H.). En el ejemplo de la imagen se muestra la demarcación de una sub zona hidrográfica.</p>
 
     <center>
-      <img src="{% static 'hydroviewer_colombia/images/imgs/hydroviewer_ejemplo_zh.png' %}"
+      <img src="{% static 'hydroviewer_colombia/images/manuals/hydroviewer_ejemplo_zh.png' %}"
            style="width: 500px;">
     </center>
 
@@ -112,7 +107,7 @@
       con 4 pestañas: pronóstico, simulación histórica, estadísticos y descarga.</p>
 
     <center>
-      <img src="{% static 'hydroviewer_colombia/images/imgs/botonesventanaemergente.png' %}"
+      <img src="{% static 'hydroviewer_colombia/images/manuals/botonesventanaemergente.png' %}"
            style="width: 300px;">
     </center>
   
@@ -124,7 +119,7 @@
     borde derecho del gráfico.</p>
 
     <center>
-      <img src="{% static 'hydroviewer_colombia/images/imgs/pronostico.png' %}"
+      <img src="{% static 'hydroviewer_colombia/images/manuals/pronostico.png' %}"
            style="width: 500px;">
     </center>
 
@@ -147,7 +142,7 @@
         superior derecha de los mismos: descarga en la opción de la cámara, zoom, pan, zoom in, 
         zoom out, autoscale, reset axes.</li>
 
-      <center><p><img src="{% static 'hydroviewer_colombia/images/imgs/pronostico_botones.png' %}"
+      <center><p><img src="{% static 'hydroviewer_colombia/images/manuals/pronostico_botones.png' %}"
       style="width: 500px;"></p> </center>
 
       <li>En la parte inferior de la ventana emergente desplegada se puede visualizar un cuadro del 
@@ -162,7 +157,7 @@
       cursor del mouse.</p>
 
     <center>
-      <img src="{% static 'hydroviewer_colombia/images/imgs/simulacionhistorica.png' %}"
+      <img src="{% static 'hydroviewer_colombia/images/manuals/simulacionhistorica.png' %}"
            style="width: 500px;">
     </center>
 
@@ -172,15 +167,7 @@
       estacionalidad mensual.</p>
 
     <center>
-      <img src="{% static 'hydroviewer_colombia/images/imgs/estadisticos.png' %}"
-           style="width: 500px;">
-    </center>
-
-    <h5><strong>Descarga</strong></h5>
-    <p>En esta opción le permite descargar el pronóstico y la simulación histórica en formato .csv</p>
-
-    <center>
-      <img src="{% static 'hydroviewer_colombia/images/imgs/descargas.png' %}"
+      <img src="{% static 'hydroviewer_colombia/images/manuals/estadisticos.png' %}"
            style="width: 500px;">
     </center>
   

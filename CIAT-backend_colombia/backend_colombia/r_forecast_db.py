@@ -1,13 +1,12 @@
 import os
-from dotenv import load_dotenv
 import io
 import sys
-# import requests
+import threading
 import numpy as np
 import pandas as pd
 import datetime as dt
-# from tqdm import tqdm
 import concurrent.futures
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 
 import time
@@ -25,7 +24,7 @@ class Update_forecast_db:
 	def __init__(self):
 
 		before = time.time()
-		n_chunks = 10
+		n_chunks = 100
 
 		# Change the work directory
 		user = os.getlogin()
@@ -35,7 +34,7 @@ class Update_forecast_db:
 		try:
 			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
 		except:
-			os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
+			os.chdir("/home/jrc/colombia-tethys-apps/CIAT-backend_colombia/backend_colombia/")
 
 
 		# Import enviromental variables
@@ -64,15 +63,16 @@ class Update_forecast_db:
 		# GEOGloWS Streamflow Servises dictionary
 		url     = 'https://geoglows.ecmwf.int/api/ForecastEnsembles/'
 		url_fun = lambda x : (url ,  {'reach_id'      : x,
-				                      'return_format' : 'csv'}) 
+				                      'return_format' : 'csv'})
 		self.dict_aux = {'Datetime column name'   : 'datetime',
 						 'Datetime column format' : '%Y-%m-%dT%H:%M:%SZ'}
 
 		# ------------------- MAIN --------------------
 		# Establish connection
-		db   = create_engine("postgresql+psycopg2://{0}:{1}@localhost:5432/{2}".format(DB_USER,
-																					   pgres_password, 
- 																					   pgres_databasename))
+		db_text = "postgresql+psycopg2://{0}:{1}@localhost:5432/{2}".format(DB_USER,
+																			pgres_password, 
+																			pgres_databasename)
+		db   = create_engine(db_text)
 	
 		# Read comid list
 		conn = db.connect()
@@ -84,6 +84,8 @@ class Update_forecast_db:
 		finally:
 			conn.close()
 
+		db.dispose()
+
 		# In case of one comid is requiered, only remove the comment simbol (#) and in the list add the
 		# comid to call
 		# comids = comids[:100]
@@ -94,30 +96,38 @@ class Update_forecast_db:
 		# Run chunk by chunk
 		for chunk, comids in enumerate(comids_chunk, start = 1):
 
+			# Create look
+			lock = threading.Lock()
+
+			# Create engine
+			db   = create_engine(db_text, pool_timeout=120)
+
 			# Download data from comid
-			with concurrent.futures.ThreadPoolExecutor(max_workers = 5) as executor:
-				_ = list(executor.map(lambda c : self.__parallelization__(c, url_fun, db), 
+			with concurrent.futures.ThreadPoolExecutor(max_workers = 10) as executor:
+				_ = list(executor.map(lambda c : self.__download_data__(c, url_fun, db, lock), 
 									  comids))
 
+			db.dispose()
 			print('Update : {:.0f} %, Delay : {:.4f} seg'.format(100 * chunk / n_chunks, time.time() - before))
 
 
-	def __parallelization__(self, c, url_fun, db):
+	def __parallelization__(self, c, url_fun, db, lock):
 		# Parallelization of ssesion out of daownload data
 		session = db.connect()
 		try:
-			self.__download_data__(c, url_fun, session)
+			self.__download_data__(c, url_fun, session, lock)
 		finally:
 			session.close()
 
 
-	def __download_data__(self, comid, url, db):
+	def __download_data__(self, comid, url, db, lock):
 		"""
 		Seriealized download function
 		Input:
 			comid      : str   -> comid to download
 			url        : func  -> function to download data
 			db         : pgres -> Postgres database
+			lock
 		Output :
 			str        : str  -> String in bytes downloaded
 		"""
@@ -131,17 +141,23 @@ class Update_forecast_db:
 		# Review number of data download
 		if df.shape[1] != 52 or df.shape[0] <= 2:
 			df = data_request(url=url_comid, params=params_comid)
-			df = self.__build_dataframe__(df, url, params)
+			df = self.__build_dataframe__(df, url, params=params_comid)
 
 		# Build table name
 		table_name = self.pgres_tablename_func(comid)
-		
+
 		# Insert to data
-		df.to_sql(table_name, con=db, if_exists='replace', index=True)
+		lock.acquire()
+		try:
+			session = db.connect()
+			try:
+				df.to_sql(table_name, con=session, if_exists='replace', index=True)
+			finally:
+				session.close()
+		finally:
+			lock.release()
 
 		# print('Download : {}'.format(comid))
-
-		return 0
 
 
 	def __build_dataframe__(self, input_data, url, params):
@@ -163,12 +179,20 @@ class Update_forecast_db:
 			format is not needed, but it is slower.
 			"""
 			try:
+				'''
+				Some times Datetime column download does not work correctly with date_parser
 				rv = pd.read_csv(io.StringIO(input_data),
 				 				 parse_dates = [self.dict_aux['Datetime column name']],
 								 date_parser = lambda x : dt.datetime.strptime(x,
 								 											   self.dict_aux['Datetime column format']),
 								 index_col   = [self.dict_aux['Datetime column name']],
 								)
+				# '''
+				rv = pd.read_csv(io.StringIO(input_data))
+				rv[self.dict_aux['Datetime column name']] = pd.to_datetime(rv[self.dict_aux['Datetime column name']],
+							                                               format = self.dict_aux['Datetime column format'])
+				rv.set_index(self.dict_aux['Datetime column name'], inplace = True)
+				
 			except Exception as e:
 				# TODO : Try to remove this pice of code or change location
 				# If the data download fails, the download process will be recursive.

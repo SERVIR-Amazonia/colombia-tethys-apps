@@ -1,0 +1,145 @@
+{% load tethys_gizmos %}
+
+{% block import_gizmos %}
+    {% import_gizmo_dependency plotly_view %}
+    {% import_gizmo_dependency datatable_view %}
+    {% import_gizmo_dependency date_picker %}
+{% endblock %}
+
+{% block panel_options %}
+    <ul class="nav nav-tabs" id="panel-tab" role="tablist">
+        <li class="nav-item" role="presentation">
+        <button 
+            class="nav-link active" 
+            id="hydrograph-tab" 
+            data-bs-toggle="tab" 
+            data-bs-target="#hydrograph" 
+            type="button" 
+            role="tab" 
+            aria-controls="hydrograph" 
+            aria-selected="true"> Simulación histórica </button>
+        </li>
+        <li class="nav-item" role="presentation">
+        <button 
+            class="nav-link" 
+            id="visual-analisis-tab" 
+            data-bs-toggle="tab" 
+            data-bs-target="#visual-analisis" 
+            type="button" 
+            role="tab" 
+            aria-controls="visual-analisis" 
+            aria-selected="false">Análisis visual</button>
+        </li>
+        <li class="nav-item" role="presentation">
+        <button 
+            class="nav-link" 
+            id="forecast-tab" 
+            data-bs-toggle="tab"
+            data-bs-target="#forecast" 
+            type="button" 
+            role="tab" 
+            aria-controls="forecast" 
+            aria-selected="false"> Pronóstico </button>
+        </li>
+    </ul>
+    <div class="tab-content" id="panel-tab-content">
+        <div class="tab-pane fade show active" id="hydrograph" role="tabpanel" aria-labelledby="hydrograph-tab">
+            <div class="container-fluid">
+                {% gizmo data_plot %}
+                <button type="button" class="btn btn-sm btn-primary" onclick="descargarArchivo('get-simulated-data-xlsx')">
+                    <i class="fa-solid fa-download"></i> Descargar Simulación histórica
+                </button>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="visual-analisis" role="tabpanel" aria-labelledby="visual-analisis-tab">
+            <div class="container-fluid">
+                {% gizmo daily_average_plot %}
+            </div>
+            <div class="container-fluid">
+                {% gizmo monthly_average_plot %}
+            </div>
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col">
+                        {% gizmo flow_duration_curve %}
+                    </div>
+                    <div class="col">
+                        {% gizmo acumulated_volume_plot %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-pane fade" id="forecast" role="tabpanel" aria-labelledby="forecast-tab">
+            {% block forecast_raw %}
+                <br>
+                <div style="padding-left: 12px"><b>Fecha de inicialización:</b></div>
+                <div class="input-group" style="padding-left: 12px; padding-right: 12px;">
+                    <input type="text" class="form-control" id="datepicker_raw">
+                    <button class="btn btn-primary btn-sm" type="button" id="button_datepicker_raw">Actualizar</button>
+                </div>
+                <div id="ensemble-forecast-container">
+                    <div class="container-fluid" id="ensemble_forecast_plot">
+                        {% gizmo forecast_plot %}
+                    </div>
+                    <div class="container-fluid" id="forecast-table">
+                        {{ forecast_table|safe }}
+                    </div>
+                    <br>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="descargarArchivo('get-forecast-xlsx')">
+                        <i class="fa-solid fa-download"></i> Descargar Pronóstico
+                    </button>
+                </div>
+                
+                <br>
+            {% endblock %}
+        </div>
+    </div>
+    <script>
+
+        datepicker = flatpickr("#datepicker_raw", {
+            minDate: new Date().fp_incr(-45),
+            maxDate: "today",
+            defaultDate: "today",
+            dateFormat: "Ymd",
+            altInput: true,
+            altFormat: "F j, Y",
+            enableTime: false,
+            locale: "es"
+        });
+
+        loader = `<div class="loading-container" style="height: 350px; padding-top: 12px;"> 
+                        <div class="loading"> 
+                        <h2>LOADING DATA</h2>
+                            <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
+                        </div>
+                    </div>`;
+        
+        $("#button_datepicker_raw").on("click", function(){
+            forecast_date = $("#datepicker_raw").val();
+            $("#ensemble_forecast_plot").html(loader);
+            $("#forecast-table").html("");
+            // Retrieve the raw forecast
+            $.ajax({
+                type: 'GET', 
+                url: "get-raw-forecast-date",
+                data: { 
+                    comid: global_comid,
+                    width: `${$("#panel-tab-content").width()}`,
+                    fecha: forecast_date 
+                }
+            }).done(function(response) {
+                $("#ensemble-forecast-container").html(response); 
+            })
+        })
+
+        function descargarArchivo(api_name){
+            forecast_date = $("#datepicker_cor").val()
+            url = `${server}/apps/hydroviewer-colombia/${api_name}/?fecha=${forecast_date}&comid=${global_comid}`
+            window.location.href = url;
+        }
+
+    </script>
+
+
+
+{% endblock %}

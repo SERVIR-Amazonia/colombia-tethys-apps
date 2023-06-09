@@ -665,8 +665,8 @@ def get_raw_forecast_date(request):
     conn = db.connect()
 
     # Data series
-    observed_data = get_format_data("select datetime, {0} from streamflow_data order by datetime;".format(station_code), conn)
-    simulated_data = get_format_data("select * from r_{0};".format(station_comid), conn)
+    observed_data = get_format_data("select datetime, s_{0} from observed_streamflow_data order by datetime;".format(station_code), conn)
+    simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
     corrected_data = get_bias_corrected_data(simulated_data, observed_data)
 
     # Raw forecast

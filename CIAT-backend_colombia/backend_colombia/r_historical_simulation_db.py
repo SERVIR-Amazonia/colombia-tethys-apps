@@ -1,11 +1,12 @@
 import os
-import sys
-from dotenv import load_dotenv
 import io
+import sys
+import threading
 import numpy as np
 import pandas as pd
 import datetime as dt
 import concurrent.futures
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 
 import time
@@ -35,7 +36,7 @@ class Update_historical_simulation_db:
 		try:
 			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
 		except:
-			os.chdir("/home/jrc/CIAT-backend_colombia/backend_colombia/")
+			os.chdir("/home/jrc/colombia-tethys-apps/CIAT-backend_colombia/backend_colombia/")
 
 		# Import enviromental variables
 		load_dotenv()
@@ -69,17 +70,19 @@ class Update_historical_simulation_db:
 		db   = create_engine("postgresql+psycopg2://{0}:{1}@localhost:5432/{2}".format(DB_USER,
 																					   pgres_password,
 																					   pgres_databasename))
-
-		# Connect to database out of for loop
-		conn = db.connect()
 		try:
-			# Read comids list
-			comids = pd.read_sql('select {} from {}'.format(station_comid_name, station_table_name), conn)\
-					   .values\
-					   .flatten()\
-					   .tolist()
+		# Connect to database out of for loop
+			conn = db.connect()
+			try:
+				# Read comids list
+				comids = pd.read_sql('select {} from {}'.format(station_comid_name, station_table_name), conn)\
+						.values\
+						.flatten()\
+						.tolist()
+			finally:
+				conn.close()
 		finally:
-			conn.close()
+			db.dispose()
 
 		# In case of one comid is requiered, only remove the comment simbol (#) and in the list add the
 		# comid to call
@@ -91,26 +94,30 @@ class Update_historical_simulation_db:
 		# Run chunk by chunk
 		for chunk, comids in enumerate(comids_chunk, start = 1):
 
+			# Create look
+			lock = threading.Lock()
+
 			# Download data and insert
-			with concurrent.futures.ThreadPoolExecutor(max_workers = 2) as executor:
-				_ = list(executor.map(lambda c : self.__parallelization__(c, url_fun, db),
+			with concurrent.futures.ThreadPoolExecutor(max_workers = 4) as executor:
+				_ = list(executor.map(lambda c : self.__download_data__(c, url_fun, db, lock),
 									  comids))
 
 			print('Update : {:.0f} %, Delay : {:.4f} seg.'.format(100 * chunk / n_chunks, time.time() - before))
 
 
-	def __parallelization__(self, c, url_fun, db):
+	def __parallelization__(self, c, url_fun, db, lock):
 		session = db.connect()
 		try:
-		 	self.__download_data__(c, url_fun, conn=session)
+			self.__download_data__(c, url_fun, conn=session, lock=lock)
 		finally:
-		 	session.close()
+			session.close()
 
 
 	def __download_data__(self, 
 						  comid : str, 
-						  url_fun : "func",
-						  conn : "POSTGRES database connection"):
+						  url_fun,
+						  conn,
+						  lock):
 		"""
 		Seriealized download function
 		Input:
@@ -138,8 +145,17 @@ class Update_historical_simulation_db:
 							 self.dict_aux['Data column name prefix'] + str(comid)},
 				  inplace = True)
 
+
 		# Insert data to database with close connection secured
-		df.to_sql(self.pgres_tablename_func(comid), con=conn, if_exists='replace', index=True)
+		lock.acquire()
+		try:
+			session = conn.connect()
+			try:
+				df.to_sql(self.pgres_tablename_func(comid), con=session, if_exists='replace', index=True)
+			finally:
+				session.close()
+		finally:
+			lock.release()
 
 		del df
 
