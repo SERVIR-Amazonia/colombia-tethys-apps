@@ -294,29 +294,35 @@ def get_forecast_plot(comid, stats, rperiods, records):
 ####################################################################################################
 
 # Initialize the web app
-@controller(name='home',url='hydroviewer-colombia')
+@controller(name='home', url='hydroviewer-colombia')
 def home(request):
     return render(request, 'hydroviewer_colombia/home.html')
 
 
 # Return data and plots for the selected comid
-@controller(name='get_data',url='hydroviewer-colombia/get-data')
+@controller(name='get_data', url='hydroviewer-colombia/get-data')
 def get_data(request):
+
     # Retrieving GET arguments
     station_comid = request.GET['comid']
+
     plot_width = float(request.GET['width']) - 12
     plot_width_2 = 0.5 * plot_width
+
     # Establish connection to database
     db= create_engine(tokencon)
     conn = db.connect()
+
     # Data series
     simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
     ensemble_forecast = get_format_data("select * from f_{0};".format(station_comid), conn)
     forecast_records = get_format_data("select * from fr_{0};".format(station_comid), conn)
     ensemble_stats = get_ensemble_stats(ensemble_forecast)
     return_periods = get_return_periods(station_comid, simulated_data)
+
     # Close conection
     conn.close()
+
     # Plots and tables
     data_plot = geoglows.plots.historic_simulation(
                                     hist = simulated_data,
@@ -359,13 +365,13 @@ def get_data(request):
     return render(request, 'hydroviewer_colombia/panel.html', context) 
 
 
-
 # Return streamflow station (in geojson format) 
 @controller(name='get_raw_forecast_date',url='hydroviewer-colombia/get-raw-forecast-date')
 def get_raw_forecast_date(request):
+
     # Retrieving GET arguments
     station_comid = request.GET['comid']
-    plot_width = float(request.GET['width']) - 12
+    plot_width    = float(request.GET['width']) - 12
     forecast_date = request.GET['fecha']
 
     # Establish connection to database
@@ -373,31 +379,32 @@ def get_raw_forecast_date(request):
     conn = db.connect()
 
     # Data series
-    simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
+    simulated_data    = get_format_data("select * from hs_{0};".format(station_comid), conn)
     ensemble_forecast = get_forecast_date(station_comid, forecast_date)
-    forecast_records = get_forecast_record_date(station_comid, forecast_date)
-    ensemble_stats = get_ensemble_stats(ensemble_forecast)
-    return_periods = get_return_periods(station_comid, simulated_data)
+    forecast_records  = get_forecast_record_date(station_comid, forecast_date)
+    ensemble_stats    = get_ensemble_stats(ensemble_forecast)
+    return_periods    = get_return_periods(station_comid, simulated_data)
+
     # Close conection
     conn.close()
+
     # Plots and tables
-    forecast_plot = get_forecast_plot(
-                                    comid = station_comid, 
-                                    stats = ensemble_stats, 
-                                    rperiods = return_periods, 
-                                    records = forecast_records)
+    forecast_plot = get_forecast_plot(comid = station_comid, 
+                                      stats = ensemble_stats, 
+                                      rperiods = return_periods, 
+                                      records = forecast_records)
+    
     forecast_table = geoglows.plots.probabilities_table(
                                     stats = ensemble_stats,
                                     ensem = ensemble_forecast, 
                                     rperiods = return_periods)
 
-    #returning
+    # Returning
     context = {
         "forecast_plot": PlotlyView(forecast_plot.update_layout(width = plot_width)),
         "forecast_table": forecast_table,
     }
     return render(request, 'hydroviewer_colombia/forecast_panel.html', context)
-
 
 
 # Return alerts (in geojson format)
@@ -406,16 +413,24 @@ def get_alerts(request):
     # Establish connection to database
     db = create_engine(tokencon)
     conn = db.connect()
+
     # Query to database
     stations = pd.read_sql("select * from drainage where alert != 'R0'", conn)
 
     # Fix for station database
-    stations.rename(columns={'hydroid' : 'comid',
+    stations.rename(columns={'hydroid'    : 'comid',
                              'dpto_cnmbr' : 'loc0',
-                             'nom_zh' : 'loc1',
-                             'nom_szh' : 'loc2'}, inplace = True)
+                             'nom_zh'     : 'loc1',
+                             'nom_szh'    : 'loc2'}, inplace = True)
+
+    for col in stations.columns:
+        stations[col] = stations[col].astype('str')
+
+    stations['latitude']  = stations['latitude'].astype('float')
+    stations['longitude'] = stations['longitude'].astype('float')
 
     conn.close()
+
     stations = to_geojson(
         df = stations,
         lat = "latitude",
@@ -431,14 +446,21 @@ def get_rivers(request):
     # Establish connection to database
     db = create_engine(tokencon)
     conn = db.connect()
+    
     # Query to database
     stations = pd.read_sql("select * from drainage", conn)
 
     # Fix database
-    stations.rename(columns={'hydroid' : 'comid',
+    stations.rename(columns={'hydroid'    : 'comid',
                              'dpto_cnmbr' : 'loc0',
-                             'nom_zh' : 'loc1',
-                             'nom_szh' : 'loc2'}, inplace = True)
+                             'nom_zh'     : 'loc1',
+                             'nom_szh'    : 'loc2'}, inplace = True)
+    
+    for col in stations.columns:
+        stations[col] = stations[col].astype('str')
+    
+    stations['latitude']  = stations['latitude'].astype('float')
+    stations['longitude'] = stations['longitude'].astype('float')
 
     conn.close()
     stations = to_geojson(

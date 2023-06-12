@@ -488,6 +488,12 @@ def get_forecast_plot(comid, site, stats, rperiods, records, obs_data):
 
 
 def plot_historical_waterlevel(observed_df, corrected_df, station_code, station_name):
+
+    # Fix database for plot
+    observed_df = observed_df.dropna()
+    corrected_df = corrected_df.dropna()
+
+    # Plot
     observed_WL = go.Scatter(x=observed_df.index, y=observed_df.iloc[:, 0].values, name='Observed', line=dict(color="#636EFA"))
     corrected_WL = go.Scatter(x=corrected_df.index, y=corrected_df.iloc[:, 0].values, name='Corrected Simulated', line=dict(color="#00CC96"))
     layout = go.Layout(

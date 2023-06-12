@@ -579,7 +579,6 @@ def get_data(request):
     # Data series
     observed_data = get_format_data("select datetime, s_{0} from observed_streamflow_data order by datetime;".format(station_code), conn)
     simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
-    simulated_data = simulated_data
 
     corrected_data = get_bias_corrected_data(simulated_data, observed_data)
 

@@ -110,7 +110,7 @@ class Update_forecast_record_db:
 
 			try:
 				# Download data parallelization
-				with concurrent.futures.ThreadPoolExecutor(max_workers = 10) as executor:
+				with concurrent.futures.ThreadPoolExecutor(max_workers = 2) as executor:
 					list(executor.map(lambda c : self.__download_data__(c, url_fun, start_date, db, lock),
 									comids)
 						)

@@ -93,17 +93,20 @@ class Update_forecast_db:
 		# Split list for clear the cache memory
 		comids_chunk = np.array_split(comids, n_chunks)
 
+		# Create look
+		lock = threading.Lock()
+
 		# Run chunk by chunk
+		print(' Start update '.center(70, '-'))
 		for chunk, comids in enumerate(comids_chunk, start = 1):
 
-			# Create look
-			lock = threading.Lock()
+			print("from : {}, to : {}".format(comids[0], comids[-1]))
 
 			# Create engine
 			db   = create_engine(db_text, pool_timeout=120)
 			try:
 				# Download data from comid
-				with concurrent.futures.ThreadPoolExecutor(max_workers = 10) as executor:
+				with concurrent.futures.ThreadPoolExecutor(max_workers = 2) as executor:
 					_ = list(executor.map(lambda c : self.__download_data__(c, url_fun, db, lock), 
 										comids))
 			finally:
@@ -158,8 +161,6 @@ class Update_forecast_db:
 		finally:
 			lock.release()
 
-		# print('Download : {}'.format(comid))
-
 
 	def __build_dataframe__(self, input_data, url, params):
 		"""
@@ -194,6 +195,7 @@ class Update_forecast_db:
 							                                               format = self.dict_aux['Datetime column format'])
 				rv.set_index(self.dict_aux['Datetime column name'], inplace = True)
 				
+
 			except Exception as e:
 				# TODO : Try to remove this pice of code or change location
 				# If the data download fails, the download process will be recursive.

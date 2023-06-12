@@ -580,7 +580,6 @@ $('#select-subhyz').selectize({
 });
 
 
-
 $("#shpFile").on("change",  function(){
     // Lee el archivo desde la entrada de archivos
     var file = document.getElementById('shpFile').files[0];
@@ -602,13 +601,14 @@ $("#shpFile").on("change",  function(){
 });
 
 
-
 //  Select box for ZOOM to stations and rivers
 fetch("get-rivers")
     .then((response) => (layer = response.json()))
     .then((layer) => {
+        
         // Format json as input of selectize
         est_layer = layer.features.map(item => item.properties);
+        
         // Rendering the select box for rivers
         $('#select-river').selectize({
             maxItems: 1,
