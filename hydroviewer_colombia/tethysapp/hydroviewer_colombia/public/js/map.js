@@ -42,7 +42,7 @@ L.control.zoom({
 function IconMarker(rp) {
   const IconMarkerR = new L.Icon({
     iconUrl: `${server}/static/hydroviewer_colombia/images/icon_popup/${rp}.svg`,
-    iconSize: [14, 14],
+    iconSize: [7, 7],
     iconAnchor: [7, 7],
   });
   return IconMarkerR;
