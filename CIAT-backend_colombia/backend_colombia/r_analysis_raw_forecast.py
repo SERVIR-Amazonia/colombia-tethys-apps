@@ -1,14 +1,14 @@
 # Import libraries and dependencies
 import os
-import psycopg2
-import pandas as pd
-from sqlalchemy import create_engine
-from dotenv import load_dotenv
-import geoglows
-import numpy as np
 import math
+import psycopg2
+import geoglows
 import datetime
 import warnings
+import numpy as np
+import pandas as pd
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
 warnings.filterwarnings('ignore')
 
 # Change the work directory
@@ -17,7 +17,7 @@ user_dir = os.path.expanduser('~{}'.format(user))
 os.chdir(user_dir)
 
 try:
-    os.chdir("tethys_apps_ecuador/backend-geoglows_ecuador")
+    os.chdir("tethys-apps-colombia/CIAT-backend_colombia/backend_colombia/")
 except:
     os.chdir("/home/jrc/colombia-tethys-apps/CIAT-backend_colombia/backend_colombia/")
 
@@ -204,6 +204,7 @@ try:
 finally:
     db.dispose()
 
+print(' {} '.center(70, '-').format(datetime.date.today()))
 
 # Number of stations
 # n = len(drainage)

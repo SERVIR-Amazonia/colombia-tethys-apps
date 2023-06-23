@@ -27,6 +27,7 @@ import datetime as dt
 import requests
 
 # Base
+import io
 import os
 from dotenv import load_dotenv
 
@@ -132,36 +133,47 @@ def get_ensemble_stats(ensemble):
     return(stats_df)
 
 
+def __bias_correction_forecast__(sim_hist, fore_nofix, obs_hist):
+    '''Correct Bias Forecasts'''
 
-def get_corrected_forecast(simulated_df, ensemble_df, observed_df):
-    monthly_simulated = simulated_df[simulated_df.index.month == (ensemble_df.index[0]).month].dropna()
-    monthly_observed = observed_df[observed_df.index.month == (ensemble_df.index[0]).month].dropna()
-    min_simulated = np.min(monthly_simulated.iloc[:, 0].to_list())
-    max_simulated = np.max(monthly_simulated.iloc[:, 0].to_list())
-    min_factor_df = ensemble_df.copy()
-    max_factor_df = ensemble_df.copy()
-    forecast_ens_df = ensemble_df.copy()
-    for column in ensemble_df.columns:
-      tmp = ensemble_df[column].dropna().to_frame()
-      min_factor = tmp.copy()
-      max_factor = tmp.copy()
-      min_factor.loc[min_factor[column] >= min_simulated, column] = 1
-      min_index_value = min_factor[min_factor[column] != 1].index.tolist()
-      for element in min_index_value:
-        min_factor[column].loc[min_factor.index == element] = tmp[column].loc[tmp.index == element] / min_simulated
-      max_factor.loc[max_factor[column] <= max_simulated, column] = 1
-      max_index_value = max_factor[max_factor[column] != 1].index.tolist()
-      for element in max_index_value:
-        max_factor[column].loc[max_factor.index == element] = tmp[column].loc[tmp.index == element] / max_simulated
-      tmp.loc[tmp[column] <= min_simulated, column] = min_simulated
-      tmp.loc[tmp[column] >= max_simulated, column] = max_simulated
-      forecast_ens_df.update(pd.DataFrame(tmp[column].values, index=tmp.index, columns=[column]))
-      min_factor_df.update(pd.DataFrame(min_factor[column].values, index=min_factor.index, columns=[column]))
-      max_factor_df.update(pd.DataFrame(max_factor[column].values, index=max_factor.index, columns=[column]))
-    corrected_ensembles = geoglows.bias.correct_forecast(forecast_ens_df, simulated_df, observed_df)
+    # Selection of monthly simulated data
+    monthly_simulated = sim_hist[sim_hist.index.month == (fore_nofix.index[0]).month].dropna()
+
+    # Obtain Min and max value
+    min_simulated = monthly_simulated.min().values[0]
+    max_simulated = monthly_simulated.max().values[0]
+
+    min_factor_df   = fore_nofix.copy()
+    max_factor_df   = fore_nofix.copy()
+    forecast_ens_df = fore_nofix.copy()
+
+    for column in fore_nofix.columns:
+        # Min Factor
+        tmp_array = np.ones(fore_nofix[column].shape[0])
+        tmp_array[fore_nofix[column] < min_simulated] = 0
+        min_factor = np.where(tmp_array == 0, fore_nofix[column] / min_simulated, tmp_array)
+
+        # Max factor
+        tmp_array = np.ones(fore_nofix[column].shape[0])
+        tmp_array[fore_nofix[column] > max_simulated] = 0
+        max_factor = np.where(tmp_array == 0, fore_nofix[column] / max_simulated, tmp_array)
+
+        # Replace
+        tmp_fore_nofix = fore_nofix[column].copy()
+        tmp_fore_nofix.mask(tmp_fore_nofix <= min_simulated, min_simulated, inplace=True)
+        tmp_fore_nofix.mask(tmp_fore_nofix >= max_simulated, max_simulated, inplace=True)
+
+        # Save data
+        forecast_ens_df.update(pd.DataFrame(tmp_fore_nofix, index=fore_nofix.index, columns=[column]))
+        min_factor_df.update(pd.DataFrame(min_factor, index=fore_nofix.index, columns=[column]))
+        max_factor_df.update(pd.DataFrame(max_factor, index=fore_nofix.index, columns=[column]))
+
+    # Get  Bias Correction
+    corrected_ensembles = geoglows.bias.correct_forecast(forecast_ens_df, sim_hist, obs_hist)
     corrected_ensembles = corrected_ensembles.multiply(min_factor_df, axis=0)
     corrected_ensembles = corrected_ensembles.multiply(max_factor_df, axis=0)
-    return(corrected_ensembles)
+
+    return corrected_ensembles
 
 
 
@@ -216,6 +228,7 @@ def get_forecast_date(comid, date):
         status = True
       except:
         print("Trying to retrieve data...")
+    
     # Filter and correct data
     outdf[outdf < 0] = 0
     outdf.index = pd.to_datetime(outdf.index)
@@ -587,7 +600,7 @@ def get_data(request):
     return_periods = get_return_periods(station_comid, simulated_data)
 
     # Corrected forecast
-    corrected_ensemble_forecast = get_corrected_forecast(simulated_data, ensemble_forecast, observed_data)
+    corrected_ensemble_forecast = __bias_correction_forecast__(simulated_data, ensemble_forecast, observed_data)
     corrected_forecast_records = get_corrected_forecast_records(forecast_records, simulated_data, observed_data)
     corrected_return_periods = get_return_periods(station_comid, corrected_data)
 
@@ -716,8 +729,8 @@ def get_raw_forecast_date(request):
     conn = db.connect()
 
     # Data series
-    observed_data = get_format_data("select datetime, {0} from waterlevel_data order by datetime;".format(station_code), conn)
-    simulated_data = get_format_data("select * from r_{0};".format(station_comid), conn)
+    observed_data = get_format_data("select datetime, s_{0} from observed_waterlevel_data order by datetime;".format(station_code), conn)
+    simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
     corrected_data = get_bias_corrected_data(simulated_data, observed_data)
     
     # Raw forecast
@@ -726,7 +739,7 @@ def get_raw_forecast_date(request):
     return_periods = get_return_periods(station_comid, simulated_data)
 
     # Corrected forecast
-    corrected_ensemble_forecast = get_corrected_forecast(simulated_data, ensemble_forecast, observed_data)
+    corrected_ensemble_forecast = __bias_correction_forecast__(simulated_data, ensemble_forecast, observed_data)
     corrected_forecast_records = get_corrected_forecast_records(forecast_records, simulated_data, observed_data)
     corrected_return_periods = get_return_periods(station_comid, corrected_data)
     
@@ -783,6 +796,126 @@ def get_raw_forecast_date(request):
     
 
     # return render(request, 'national_water_level_forecast_colombia/home.html', context)
+
+############################################################
+# Retrieve observed data
+@controller(name='get_observed_data_xlsx',
+            url='national-water-level-forecast-colombia/get-observed-data-xlsx')
+def get_observed_data_xlsx(request):
+    
+    # Retrieving GET arguments
+    station_code  = request.GET['codigo']
+    station_comid = request.GET['comid']
+    forecast_date = request.GET['fecha']
+    
+    # Establish connection to database
+    db= create_engine(tokencon)
+    conn = db.connect()
+    
+    try:
+    # Data series
+        data = get_format_data("select datetime, s_{0} from observed_waterlevel_data order by datetime;".format(station_code), conn)
+        data.rename(columns={'s_{0}'.format(station_code): "Historical observation (cm)"}, inplace=True)
+    finally:
+       conn.close()
+    
+    # Crear el archivo Excel
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    data.to_excel(writer, sheet_name='serie_observada_simulada', index=True)
+    writer.save()
+    output.seek(0)
+
+    # Configurar la respuesta HTTP para descargar el archivo
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=serie_historica_observada.xlsx'
+    response.write(output.getvalue())
+    return response
+
+
+
+# Retrieve simualted corrected data
+@controller(name='get_corrected_data_xlsx',
+            url='national-water-level-forecast-colombia/get-corrected-data-xlsx')
+def get_corrected_data_xlsx(request):
+
+    # Retrieving GET arguments
+    station_code = request.GET['codigo']
+    station_comid = request.GET['comid']
+    forecast_date = request.GET['fecha']
+    
+    # Establish connection to database
+    db= create_engine(tokencon)
+    conn = db.connect()
+    
+    try:
+        # Data series
+        observed_data  = get_format_data("select datetime, s_{0} from observed_waterlevel_data order by datetime;".format(station_code), conn)
+        simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
+    finally:
+       conn.close()
+
+    # Fix data
+    data = get_bias_corrected_data(simulated_data, observed_data)
+    data.rename(columns={"Corrected Simulated Streamflow" : "Corrected Simulated Waterlevel (cm)"}, 
+                inplace = True)
+    
+    # Crear el archivo Excel
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    data.to_excel(writer, sheet_name='serie_historica_corregida', index=True)
+    writer.save()
+    output.seek(0)
+
+    # Configurar la respuesta HTTP para descargar el archivo
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=serie_historica_corregida.xlsx'
+    response.write(output.getvalue())
+    return response
+
+
+
+@controller(name='get_corrected_forecast_xlsx',
+            url='national-water-level-forecast-colombia/get-corrected-forecast-xlsx')
+def get_corrected_forecast_xlsx(request):
+    # Retrieving GET arguments
+    station_code = request.GET['codigo']
+    station_comid = request.GET['comid']
+    forecast_date = request.GET['fecha']
+
+    # Establish connection to database
+    db= create_engine(tokencon)
+    conn = db.connect()
+    try:
+        # Data series
+        observed_data  = get_format_data("select datetime, s_{0} from observed_waterlevel_data order by datetime;".format(station_code), conn)
+        simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
+    finally:
+        conn.close()
+
+    # Raw forecast
+    ensemble_forecast = get_forecast_date(station_comid, forecast_date)
+    
+    # Corrected forecast
+    corrected_ensemble_forecast = __bias_correction_forecast__(simulated_data, ensemble_forecast, observed_data)
+    
+    # Forecast stats
+    corrected_ensemble_stats = get_ensemble_stats(corrected_ensemble_forecast)
+    
+    # Crear el archivo Excel
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    corrected_ensemble_stats.to_excel(writer, sheet_name='corrected_ensemble_forecast', index=True)
+    writer.save()
+    output.seek(0)
+
+    # Configurar la respuesta HTTP para descargar el archivo
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=corrected_ensemble_forecast.xlsx'
+    response.write(output.getvalue())
+    return response
+
+
 
 ############################################################
 @controller(name = "user_manual",

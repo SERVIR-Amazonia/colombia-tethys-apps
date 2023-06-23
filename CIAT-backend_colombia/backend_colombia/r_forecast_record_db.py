@@ -33,7 +33,7 @@ class Update_forecast_record_db:
 		os.chdir(user_dir)
 
 		try:
-			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+			os.chdir("tethys-apps-colombia/CIAT-backend_colombia/backend_colombia/")
 		except:
 			os.chdir("/home/jrc/colombia-tethys-apps/CIAT-backend_colombia/backend_colombia/")
 
@@ -110,7 +110,7 @@ class Update_forecast_record_db:
 
 			try:
 				# Download data parallelization
-				with concurrent.futures.ThreadPoolExecutor(max_workers = 2) as executor:
+				with concurrent.futures.ThreadPoolExecutor(max_workers = 5) as executor:
 					list(executor.map(lambda c : self.__download_data__(c, url_fun, start_date, db, lock),
 									comids)
 						)

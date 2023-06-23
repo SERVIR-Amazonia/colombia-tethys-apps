@@ -1,9 +1,10 @@
 import os
-from dotenv import load_dotenv
 import re
 import math
+import time
 import requests
 import pandas as pd
+from dotenv import load_dotenv
 
 #                        backend_auxiliar.py
 # This file save all routines for run the backend routines.
@@ -57,6 +58,7 @@ def data_request(url, params, cnt_fail=0) -> pd.DataFrame:
 		# Condition restart
 		# print('Try : {}'.format(cnt_fail))
 		data.close()
+		time.sleep(2)
 		cnt_fail += 1
 		return data_request(url, params, cnt_fail=cnt_fail)
 
@@ -79,7 +81,7 @@ def get_data_wfs(url, id_HS, layer) -> list:
 			rv = cont.text
 			cont.close()
 			cont = rv
-		if cnt > 3:
+		if cnt > 5:
 			cont.close()
 			print('Error in {} download.'.format(url))
 			return []

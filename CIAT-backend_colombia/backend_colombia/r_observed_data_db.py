@@ -37,7 +37,7 @@ class Update_historical_observed_data:
 		os.chdir(user_dir)
 
 		try:
-			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+			os.chdir("tethys-apps-colombia/CIAT-backend_colombia/backend_colombia/")
 		except:
 			os.chdir("/home/jrc/colombia-tethys-apps/CIAT-backend_colombia/backend_colombia/")
 

@@ -32,7 +32,7 @@ class Update_forecast_db:
 		os.chdir(user_dir)
 
 		try:
-			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+			os.chdir("tethys-apps-colombia/CIAT-backend_colombia/backend_colombia/")
 		except:
 			os.chdir("/home/jrc/colombia-tethys-apps/CIAT-backend_colombia/backend_colombia/")
 
@@ -106,7 +106,7 @@ class Update_forecast_db:
 			db   = create_engine(db_text, pool_timeout=120)
 			try:
 				# Download data from comid
-				with concurrent.futures.ThreadPoolExecutor(max_workers = 2) as executor:
+				with concurrent.futures.ThreadPoolExecutor(max_workers = 3) as executor:
 					_ = list(executor.map(lambda c : self.__download_data__(c, url_fun, db, lock), 
 										comids))
 			finally:
@@ -172,7 +172,7 @@ class Update_forecast_db:
 		"""
 		if "ERROR" == input_data:
 			rv = pd.DataFrame(data = {self.dict_aux['Datetime column name']    : [pd.NaT],
-									  self.dict_aux['Data column name prefix'] : [float('nan')]})
+									  'ensemble' : [float('nan')]})
 			return rv
 		else:
 			"""

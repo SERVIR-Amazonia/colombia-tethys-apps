@@ -218,6 +218,8 @@ function onEachFeature(feature, layer) {
 
 window.onload = function () {
   // Load drainage network
+
+  /*
   fetch(
     `${server}/static/national_water_level_forecast_colombia/geojson/colombia_geoglows_drainage.geojson`
   )
@@ -226,12 +228,23 @@ window.onload = function () {
       riv = L.geoJSON(layer, { style: { weight: 1, color: "#4747C9" } }).addTo(map);
       map.fitBounds(riv.getBounds());
     });
+  */
+
+  var url = 'https://geoserver.hydroshare.org/geoserver/HS-cff2657bc8244560b559320162bf8ce4/wms';
+  var drainage = L.tileLayer.wms(url + "?service=WMS&",
+                                {layers  : 'HS-cff2657bc8244560b559320162bf8ce4:south_america-colombia-geoglows-drainage_line',
+                                format  : 'image/vnd.jpeg-png',
+                                version : '1.1.0',
+                                transparent: true,
+                                srs     : 'EPSG:3857',
+                                }
+                                ).addTo(map);
 
   // Load stations 
   fetch("get-stations")
     .then((response) => (layer = response.json()))
     .then((layer) => {
-        est_layer = layer.features.map(item => item.properties);
+        est_layer = layer.features.map( item => item.properties);
         
         // Filter by alert
         est_R000 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R0"), {

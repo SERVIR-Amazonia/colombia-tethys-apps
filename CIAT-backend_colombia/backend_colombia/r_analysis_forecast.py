@@ -24,7 +24,7 @@ class Update_alarm_level:
 		os.chdir(user_dir)
 
 		try:
-			os.chdir("tethys_apps_colombia/CIAT-backend_colombia/backend_colombia/")
+			os.chdir("tethys-apps-colombia/CIAT-backend_colombia/backend_colombia/")
 		except:
 			os.chdir("/home/jrc/colombia-tethys-apps/CIAT-backend_colombia/backend_colombia/")
 
@@ -365,6 +365,8 @@ class Update_alarm_level:
 if __name__ == "__main__":
 	# Update alarm level
 	
+	print(' {} '.center(70, '-').format(datetime.date.today()))
+
 	print('Stream flow data update')
 	pgres_tab_obshist = 'observed_streamflow_data'
 	pgres_tab_name = 'stations_streamflow'

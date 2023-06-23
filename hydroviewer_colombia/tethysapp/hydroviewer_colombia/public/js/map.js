@@ -42,8 +42,8 @@ L.control.zoom({
 function IconMarker(rp) {
   const IconMarkerR = new L.Icon({
     iconUrl: `${server}/static/hydroviewer_colombia/images/icon_popup/${rp}.svg`,
-    iconSize: [7, 7],
-    iconAnchor: [7, 7],
+    iconSize: [14, 14],
+    iconAnchor: [14, 14],
   });
   return IconMarkerR;
 }
@@ -150,93 +150,107 @@ async function get_data_station(comid){
 
 window.onload = function () {
   
-  // Show data panel
-  function showPanel(e) {
-    var comid = e.layer.feature.properties.comid;
-    /*
-    var name = e.layer.feature.properties.river;
-    var lat = e.layer.feature.properties.latitude;
-    var lon = e.layer.feature.properties.longitude;
-    var loc1 = e.layer.feature.properties.loc1;
-    var loc2 = e.layer.feature.properties.loc2;
-    */
-    $("#panel-modal").modal("show")
-    // get_data_station(comid, name, lat, lon, loc1, loc2)
-    get_data_station(comid)
-  }
+    // Show data panel
+    function showPanel_comid(comid) {
+        $("#panel-modal").modal("show")
+        // get_data_station(comid, name, lat, lon, loc1, loc2)
+        get_data_station(comid)
+    }
+
+    function showPanel(e) {
+        var comid = e.layer.feature.properties.comid;
+        /*
+        var name = e.layer.feature.properties.river;
+        var lat = e.layer.feature.properties.latitude;
+        var lon = e.layer.feature.properties.longitude;
+        var loc1 = e.layer.feature.properties.loc1;
+        var loc2 = e.layer.feature.properties.loc2;
+        */
+        showPanel_comid(comid)
+    }
 
 
-  // Load drainage network
-  fetch(
-    `${server}/static/hydroviewer_colombia/geojson/colombia_geoglows_drainage.geojson`
-  )
-    .then((response) => (layer = response.json()))
-    .then((layer) => {
-      // Adding the drainage network to the map
-      riv = L.geoJSON(layer, {
-        style: {
-          weight: 1, 
-          color: "#4747C9" 
+    // Load drainage network
+    var url = 'https://geoserver.hydroshare.org/geoserver/HS-dd069299816c4f1b82cd1fb2d59ec0ab/ows';
+    var URL = url + L.Util.getParamString(L.Util.extend({service      : 'WFS',
+                                                        version      : '1.0.0',
+                                                        request      : 'GetFeature',
+                                                        typeName     : 'HS-dd069299816c4f1b82cd1fb2d59ec0ab:colombia_geoglows_drainage',
+                                                        maxFeatures  : 2000000,
+                                                        outputFormat : 'application/json'
+                                                        }));
+    
+    // Call server
+    $.ajax({
+        url : URL,
+        success : function(resp) {
+            // Adding the drainage network to the map
+            var drainage = new L.geoJson(resp,
+            {onEachFeature : function(feature, layer){
+                layer.on({
+                    // On click function
+                    click : function(e){
+                        var comid = e.target.feature.properties.comid;
+                        showPanel_comid(comid);
+                        }
+                });
+                },
+            style : {
+                weight: 1, 
+                color: "#4747C9" 
+                }
+            }).addTo(map);
+
+            // Fit the map to the river bounds
+            map.fitBounds(drainage.getBounds());
         }
-      }).addTo(map);
-
-      // Fit the map to the river bounds
-      map.fitBounds(riv.getBounds());
-
-      // Buffer to select rivers
-      map.almostOver.addLayer(riv);
-
-      // On click function
-      map.on('almost:click', showPanel);
     });
 
-  // Retrieve the alets
 
-  
-// Load stations
-fetch("get-alerts")
-  .then((response) => (layer = response.json()))
-  .then((layer) => {
-    
-      est_R002 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R2"), {
-          pointToLayer: IconParse,
-      });
-      est_R002.addTo(map);
-      est_R002.on('click', showPanel)
-      
-      est_R005 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R5"), {
-          pointToLayer: IconParse,
-      });
-      est_R005.addTo(map);
-      est_R005.on('click', showPanel)
+    // Load stations
+    fetch("get-alerts")
+    .then((response) => (layer = response.json()))
+    .then((layer) => {
+        
+        est_R002 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R2"), {
+            pointToLayer: IconParse,
+        });
+        est_R002.addTo(map);
+        est_R002.on('click', showPanel)
+        
+        est_R005 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R5"), {
+            pointToLayer: IconParse,
+        });
+        est_R005.addTo(map);
+        est_R005.on('click', showPanel)
 
-      est_R010 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R10"), {
-          pointToLayer: IconParse,
-      });
-      est_R010.addTo(map);
-      est_R010.on('click', showPanel)
+        est_R010 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R10"), {
+            pointToLayer: IconParse,
+        });
+        est_R010.addTo(map);
+        est_R010.on('click', showPanel)
 
-      est_R025 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R25"), {
-          pointToLayer: IconParse,
-      });
-      est_R025.addTo(map);
-      est_R025.on('click', showPanel)
+        est_R025 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R25"), {
+            pointToLayer: IconParse,
+        });
+        est_R025.addTo(map);
+        est_R025.on('click', showPanel)
 
-      est_R050 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R50"), {
-          pointToLayer: IconParse,
-      });
-      est_R050.addTo(map);
-      est_R050.on('click', showPanel)
+        est_R050 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R50"), {
+            pointToLayer: IconParse,
+        });
+        est_R050.addTo(map);
+        est_R050.on('click', showPanel)
 
-      est_R100 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R100"), {
-          pointToLayer: IconParse,
-      });
-      est_R100.addTo(map);
-      est_R100.on('click', showPanel)
+        est_R100 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R100"), {
+            pointToLayer: IconParse,
+        });
+        est_R100.addTo(map);
+        est_R100.on('click', showPanel)
 
-  });
+    });
 
 
-}; 
+    }; 
  
  
