@@ -506,8 +506,8 @@ def get_forecast_xlsx(request):
     station_comid = request.GET['comid']
     forecast_date = request.GET['fecha']
     # Establish connection to database
-    db= create_engine(tokencon)
-    conn = db.connect()
+    # db= create_engine(tokencon)
+    # conn = db.connect()
     # Raw forecast
     ensemble_forecast = get_forecast_date(station_comid, forecast_date)
     ensemble_stats = get_ensemble_stats(ensemble_forecast)

@@ -133,7 +133,7 @@
         })
 
         function descargarArchivo(api_name){
-            forecast_date = $("#datepicker_cor").val()
+            forecast_date = $("#datepicker_raw").val()
             url = `${server}/apps/hydroviewer-colombia/${api_name}/?fecha=${forecast_date}&comid=${global_comid}`
             window.location.href = url;
         }
