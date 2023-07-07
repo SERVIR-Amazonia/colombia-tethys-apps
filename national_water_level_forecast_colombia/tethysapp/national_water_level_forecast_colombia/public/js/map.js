@@ -230,22 +230,22 @@ window.onload = function () {
     });
   */
 
-  var url = 'https://geoserver.hydroshare.org/geoserver/HS-cff2657bc8244560b559320162bf8ce4/wms';
-  var drainage = L.tileLayer.wms(url + "?service=WMS&",
-                                {layers  : 'HS-cff2657bc8244560b559320162bf8ce4:south_america-colombia-geoglows-drainage_line',
-                                format  : 'image/vnd.jpeg-png',
-                                version : '1.1.0',
-                                transparent: true,
-                                srs     : 'EPSG:3857',
-                                }
-                                ).addTo(map);
+  var url = 'https://geoserver.hydroshare.org/geoserver/HS-dd069299816c4f1b82cd1fb2d59ec0ab/wms';
+  L.tileLayer.wms(url + "?service=WMS&",
+                    {layers  : 'HS-dd069299816c4f1b82cd1fb2d59ec0ab:colombia_geoglows_drainage_v1',
+                    format  : 'image/vnd.jpeg-png',
+                    version : '1.1.0',
+                    transparent: true,
+                    srs     : 'EPSG:4326',
+                    }
+                    ).addTo(map);
 
   // Load stations 
   fetch("get-stations")
     .then((response) => (layer = response.json()))
     .then((layer) => {
         est_layer = layer.features.map( item => item.properties);
-        
+
         // Filter by alert
         est_R000 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R0"), {
             pointToLayer: IconParse,

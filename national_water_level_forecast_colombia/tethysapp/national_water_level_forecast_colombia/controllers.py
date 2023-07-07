@@ -592,6 +592,10 @@ def get_data(request):
     # Data series
     observed_data = get_format_data("select datetime, s_{0} from observed_waterlevel_data order by datetime;".format(station_code), conn)
     simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
+    # TODO : remove whwere geoglows server works
+    simulated_data = simulated_data[simulated_data.index < '2022-06-01'].copy()
+
+
     corrected_data = get_bias_corrected_data(simulated_data, observed_data)
 
     # Raw forecast
@@ -731,6 +735,9 @@ def get_raw_forecast_date(request):
     # Data series
     observed_data = get_format_data("select datetime, s_{0} from observed_waterlevel_data order by datetime;".format(station_code), conn)
     simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
+    # TODO : remove whwere geoglows server works
+    simulated_data = simulated_data[simulated_data.index < '2022-06-01'].copy()
+
     corrected_data = get_bias_corrected_data(simulated_data, observed_data)
     
     # Raw forecast
@@ -852,6 +859,8 @@ def get_corrected_data_xlsx(request):
         # Data series
         observed_data  = get_format_data("select datetime, s_{0} from observed_waterlevel_data order by datetime;".format(station_code), conn)
         simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
+        # TODO : remove whwere geoglows server works
+        simulated_data = simulated_data[simulated_data.index < '2022-06-01'].copy()
     finally:
        conn.close()
 
@@ -890,6 +899,8 @@ def get_corrected_forecast_xlsx(request):
         # Data series
         observed_data  = get_format_data("select datetime, s_{0} from observed_waterlevel_data order by datetime;".format(station_code), conn)
         simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
+        # TODO : remove whwere geoglows server works
+        simulated_data = simulated_data[simulated_data.index < '2022-06-01'].copy()
     finally:
         conn.close()
 

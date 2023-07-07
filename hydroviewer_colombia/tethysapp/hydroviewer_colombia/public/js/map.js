@@ -43,19 +43,37 @@ function IconMarker(rp) {
   const IconMarkerR = new L.Icon({
     iconUrl: `${server}/static/hydroviewer_colombia/images/icon_popup/${rp}.svg`,
     iconSize: [14, 14],
-    iconAnchor: [14, 14],
+    iconAnchor: [7, 7],
   });
   return IconMarkerR;
 }
 
+// Function to construct Icon Marker
+function IconMarkerF(c, size) {
+    const IconMarkerR = new L.Icon({
+      iconUrl: `${server}/static/hydroviewer_colombia/images/icon_popup/${c}.png`,
+      iconSize: [size, size],
+      iconAnchor: [size/2.0, size/2.0],
+    });
+    return IconMarkerR;
+  }
+
 // Icon markers for each return period
 const IconR000 = IconMarker("0");       // RP: 0 years
-const IconR002 = IconMarker("2");      // RP: 2 years
-const IconR005 = IconMarker("5");        // RP: 5 years
+const IconR002 = IconMarker("2");       // RP: 2 years
+const IconR005 = IconMarker("5");       // RP: 5 years
 const IconR010 = IconMarker("10");      // RP: 10 years
-const IconR025 = IconMarker("25");         // RP: 25 years
+const IconR025 = IconMarker("25");      // RP: 25 years
 const IconR050 = IconMarker("50");      // RP: 50 years
-const IconR100 = IconMarker("100");       // RP: 100 years
+const IconR100 = IconMarker("100");     // RP: 100 years
+
+// Icon markers for each return period
+const IconFR0 = IconMarkerF("normal", 10); 
+const IconFB = IconMarkerF("bass", 18);
+const IconFY = IconMarkerF("y", 14); 
+const IconFO = IconMarkerF("o", 16);
+const IconFR = IconMarkerF("r", 18); 
+
 
 // Customized icon function
 function IconParse(feature, latlng) {
@@ -85,8 +103,49 @@ function IconParse(feature, latlng) {
     return L.marker(latlng, { icon: StationIcon });
 }
 
+// Customized icon function for FEWS
+function IconParseFEWS(feature, latlng) {
+    switch(feature.properties.alert) {
+        case "R0":
+            StationIcon = IconFR0;
+            break;
+        case "-bass":
+            StationIcon = IconFB;
+            break;
+        case "-O":
+            StationIcon = IconFO;
+            break;
+        case "-R":
+            StationIcon = IconFR;
+            break;
+        case "-Y":
+            StationIcon = IconFY;
+            break;
+    }
+    return L.marker(latlng, {icon : StationIcon})
+}
 
 
+function color_alert(alert) {
+    switch(alert) {
+        case "R0":
+            color = "#fff0";
+            break;
+        case "-bass":
+            color = "#bc1cd4";
+            break;
+        case "-O":
+            color = "#d47e1c7d";
+            break;
+        case "-R":
+            color = "#ff00157d";
+            break;
+        case "-Y":
+            color = "#f1ff007d";
+            break; 
+    };
+    return color
+}
 
 // ------------------------------------------------------------------------------------------------------------ //
 //                                            PANEL DATA INFORMATION                                            //
@@ -94,21 +153,71 @@ function IconParse(feature, latlng) {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 var global_comid;
+var global_station;
 
-async function get_data_station(comid){
+async function get_data_fews(code, name, lat, lon, depto, mun, cenpoblado, nomZH, nomSZH, alert,
+    umaxhis, ubajos, uamarilla, unaranja, uroja) {
+    
+    // Updating the comid
+    global_station = code;
+
+    // Add data to the panel
+    $("#station-code-custom-fw").html(`<b>CÓDIGO:</b> &nbsp ${code}`);
+    $("#station-name-custom-fw").html(`<b>NOMBRE:</b> &nbsp ${name}`);
+    $("#station-latitude-custom-fw").html(`<b>LATITUD:</b> &nbsp ${lat}`);
+    $("#station-longitude-custom-fw").html(`<b>LONGITUD:</b> &nbsp ${lon}`);
+    $("#station-depto-custom-fw").html(`<b>DEPARTAMENTO:</b> &nbsp ${depto}`);
+    $("#station-municipio-custom-fw").html(`<b>MUNICIPIO:</b> &nbsp ${mun}`);
+    $("#station-locality1-custom-fw").html(`<b>CENTRO POBLADO:</b> &nbsp ${cenpoblado}`);
+    $("#station-locality2-custom-fw").html(`<b>ZONA HIDROGRÁFICA:</b> &nbsp ${nomZH}`);
+    $("#station-locality3-custom-fw").html(`<b>SUBZONA HIDROGRÁFICA:</b> &nbsp ${nomSZH}`);
+
+    $("#panel-modal-fews").css("border", `10px solid ${color_alert(alert)}`);
+
+    loader = `<div class="loading-container" style="height: 350px; padding-top: 12px;"> 
+                <div class="loading"> 
+                  <h2>LOADING DATA</h2>
+                  <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
+                </div>
+              </div>`; 
+    
+    // Add the dynamic loader
+    $("#streamflow").html(loader);
+    $("#water-level").html(loader);
+
+    // We need stop 300ms to obtain the width of the panel-tab-content-fews
+    await sleep(300);
+
+    $.ajax({
+        type: 'GET', 
+        url: "get-data-fews",
+        data: {
+            code: code,
+            width: `${$("#panel-tab-content-fews").width()}`,
+            umaxhis : umaxhis, 
+            ubajos : ubajos, 
+            uamarilla : uamarilla, 
+            unaranja : unaranja, 
+            uroja : uroja,
+        }
+    }).done(function(response){
+        $("#modal-body-panel-custom-fews").html(response)
+    });
+
+};
+
+
+async function get_data_station(comid, depto, mun, nomAH, nomZH, nomSZH){
     // Updating the comid
     global_comid = comid
     
     // Add data to the panel
-    $("#station-comid-custom").html(`<b>COMID:</b> &nbsp ${comid}`)
-
-    /*
-    $("#station-river-custom").html(`<b>RIO:</b> &nbsp ${name}`)
-    $("#station-latitude-custom").html(`<b>LATITUD:</b> &nbsp ${lat}`)
-    $("#station-longitude-custom").html(`<b>LONGITUD:</b> &nbsp ${lon}`)
-    $("#station-locality1-custom").html(`<b>ZONA HIDROGRÁFICA:</b> &nbsp ${loc1}`)
-    $("#station-locality2-custom").html(`<b>SUBZONA HIDROGRÁFICA:</b> &nbsp ${loc2}`)
-    */
+    $("#station-comid-custom").html(`<b>COMID:</b> &nbsp ${comid}`);
+    $("#station-depto-custom").html(`<b>DEPARTAMENTO: </b> &nbsp ${depto}`);
+    $("#station-mun-custom").html(`<b>MUNICIPIO: </b> &nbsp ${mun}`);
+    $("#station-locality1-custom").html(`<b>ÁREA HIDROGRÁFICA:</b> &nbsp ${nomAH}`);
+    $("#station-locality2-custom").html(`<b>ZONA HIDROGRÁFICA :</b> &nbsp ${nomZH}`);
+    $("#station-locality3-custom").html(`<b>ZONA HIDROGRÁFICA :</b> &nbsp ${nomSZH}`);
 
     loader = `<div class="loading-container" style="height: 350px; padding-top: 12px;"> 
                 <div class="loading"> 
@@ -151,22 +260,63 @@ async function get_data_station(comid){
 window.onload = function () {
   
     // Show data panel
-    function showPanel_comid(comid) {
-        $("#panel-modal").modal("show")
+    function showPanel_comid(comid, depto, mun, nomAH, nomZH, nomSZH) {
+        $("#panel-modal").modal("show");
         // get_data_station(comid, name, lat, lon, loc1, loc2)
-        get_data_station(comid)
+        get_data_station(comid, depto, mun, nomAH, nomZH, nomSZH);
     }
 
-    function showPanel(e) {
-        var comid = e.layer.feature.properties.comid;
-        /*
-        var name = e.layer.feature.properties.river;
-        var lat = e.layer.feature.properties.latitude;
-        var lon = e.layer.feature.properties.longitude;
-        var loc1 = e.layer.feature.properties.loc1;
-        var loc2 = e.layer.feature.properties.loc2;
-        */
-        showPanel_comid(comid)
+
+    function showPanelRiver(e) {
+        var comid = e.target.feature.properties.comid;
+        var depto = e.target.feature.properties.DPTO_CNMBR ;
+        var mun = e.target.feature.properties.NOMBRE_MPI ;
+        var nomAH = e.target.feature.properties.NOMAH ;
+        var nomZH = e.target.feature.properties.NOMZH ;
+        var nomSZH = e.target.feature.properties.NOMSZH ;
+
+        showPanel_comid(comid, depto, mun, nomAH, nomZH, nomSZH);
+    }
+
+
+    function showPanelAlert(e) {
+        var comid  = e.layer.feature.properties.comid;
+        var depto  = e.layer.feature.properties.loc0;
+        var mun = e.layer.feature.properties.loc3;
+        var nomAH = e.layer.feature.properties.loc4;
+        var nomZH  = e.layer.feature.properties.loc1;
+        var nomSZH = e.layer.feature.properties.loc2;
+
+        showPanel_comid(comid, depto, mun, nomAH, nomZH, nomSZH);
+    }
+
+
+    function showPanelFews(e) {
+        // Load data for feratures
+        var code = e.layer.feature.properties.id;
+        var name = e.layer.feature.properties.nombre;
+        var lat = e.layer.feature.properties.lat;
+        var lon = e.layer.feature.properties.lng;
+        var depto = e.layer.feature.properties.depart;
+        var mun = e.layer.feature.properties.municipio;
+        var cenpoblado = e.layer.feature.properties.cenpoblado;
+        var nomZH = e.layer.feature.properties.zona;
+        var nomSZH = e.layer.feature.properties.subzona;
+        var alert = e.layer.feature.properties.alert;
+
+        var umaxhis   = e.layer.feature.properties.umaxhis;
+        var ubajos    = e.layer.feature.properties.ubajos;
+        var uamarilla = e.layer.feature.properties.uamarilla;
+        var unaranja  = e.layer.feature.properties.unaranja;
+        var uroja     = e.layer.feature.properties.uroja;
+
+        // Turn on panel modal fews
+        $("#panel-modal-fews").modal("show");
+
+        // Main
+        get_data_fews(code, name, lat, lon, depto, mun, cenpoblado, nomZH, nomSZH, alert,
+            umaxhis, ubajos, uamarilla, unaranja, uroja);
+        
     }
 
 
@@ -175,7 +325,7 @@ window.onload = function () {
     var URL = url + L.Util.getParamString(L.Util.extend({service      : 'WFS',
                                                         version      : '1.0.0',
                                                         request      : 'GetFeature',
-                                                        typeName     : 'HS-dd069299816c4f1b82cd1fb2d59ec0ab:colombia_geoglows_drainage',
+                                                        typeName     : 'HS-dd069299816c4f1b82cd1fb2d59ec0ab:colombia_geoglows_drainage_v1',
                                                         maxFeatures  : 2000000,
                                                         outputFormat : 'application/json'
                                                         }));
@@ -190,20 +340,71 @@ window.onload = function () {
                 layer.on({
                     // On click function
                     click : function(e){
-                        var comid = e.target.feature.properties.comid;
-                        showPanel_comid(comid);
-                        }
+                        showPanelRiver(e);
+                        },
+                    mouseover: function(e) {
+                        e.target.setStyle({
+                                weight: 3, // Cambia el grosor del trazo
+                                color: "#FF0000" // Cambia el color
+                            });
+                        },
+                    mouseout: function(e) {
+                        e.target.setStyle({
+                                weight: 1, // Cambia el grosor del trazo
+                                color: "#4747C9", // Cambia el color
+                                opacity: 0.5
+                            });
+                        },
                 });
                 },
             style : {
                 weight: 1, 
-                color: "#4747C9" 
+                color: "#4747C9",
+                opacity: 0.5
                 }
             }).addTo(map);
 
             // Fit the map to the river bounds
             map.fitBounds(drainage.getBounds());
         }
+    });
+
+
+    // Load FEWS stations
+    fetch("get-fews-alerts")
+    .then((response) => (layer = response.json()))
+    .then((layer) => {
+
+        fewsStaR0 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R0"), {
+            pointToLayer : IconParseFEWS,
+        });
+        fewsStaR0.addTo(map);
+        fewsStaR0.on('click', showPanelFews);
+
+        fewsStaBass = L.geoJSON(layer.features.filter(item => item.properties.alert === "-bass"), {
+            pointToLayer : IconParseFEWS,
+        });
+        fewsStaBass.addTo(map);
+        fewsStaBass.on('click', showPanelFews);
+
+        fewsStaYl = L.geoJSON(layer.features.filter(item => item.properties.alert === "-Y"), {
+            pointToLayer : IconParseFEWS,
+        });
+        fewsStaYl.addTo(map);
+        fewsStaYl.on('click', showPanelFews);
+
+        fewsStaOr = L.geoJSON(layer.features.filter(item => item.properties.alert === "-O"), {
+            pointToLayer : IconParseFEWS,
+        });
+        fewsStaOr.addTo(map);
+        fewsStaOr.on('click', showPanelFews);
+
+        fewsStaRd = L.geoJSON(layer.features.filter(item => item.properties.alert === "-R"), {
+            pointToLayer : IconParseFEWS,
+        });
+        fewsStaRd.addTo(map);
+        fewsStaRd.on('click', showPanelFews);
+
     });
 
 
@@ -216,37 +417,37 @@ window.onload = function () {
             pointToLayer: IconParse,
         });
         est_R002.addTo(map);
-        est_R002.on('click', showPanel)
+        est_R002.on('click', showPanelAlert)
         
         est_R005 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R5"), {
             pointToLayer: IconParse,
         });
         est_R005.addTo(map);
-        est_R005.on('click', showPanel)
+        est_R005.on('click', showPanelAlert)
 
         est_R010 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R10"), {
             pointToLayer: IconParse,
         });
         est_R010.addTo(map);
-        est_R010.on('click', showPanel)
+        est_R010.on('click', showPanelAlert)
 
         est_R025 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R25"), {
             pointToLayer: IconParse,
         });
         est_R025.addTo(map);
-        est_R025.on('click', showPanel)
+        est_R025.on('click', showPanelAlert)
 
         est_R050 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R50"), {
             pointToLayer: IconParse,
         });
         est_R050.addTo(map);
-        est_R050.on('click', showPanel)
+        est_R050.on('click', showPanelAlert)
 
         est_R100 = L.geoJSON(layer.features.filter(item => item.properties.alert === "R100"), {
             pointToLayer: IconParse,
         });
         est_R100.addTo(map);
-        est_R100.on('click', showPanel)
+        est_R100.on('click', showPanelAlert)
 
     });
 

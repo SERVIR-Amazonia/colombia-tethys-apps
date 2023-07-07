@@ -1,0 +1,68 @@
+{% load tethys_gizmos %}
+
+{% block import_gizmos %}
+    {% import_gizmo_dependency plotly_view %}
+    {% import_gizmo_dependency datatable_view %}
+    {% import_gizmo_dependency date_picker %}
+{% endblock %}
+
+{% block panel_options %}
+    <ul class="nav nav-tabs" id   = "panel-tab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button 
+                class="nav-link active" 
+                id="streamflow-tab" 
+                data-bs-toggle="tab" 
+                data-bs-target="#streamflow" 
+                type="button" 
+                role="tab" 
+                aria-controls="streamflow" 
+                aria-selected="true"> Caudal en tiempo real </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button 
+                class="nav-link" 
+                id="water-level-tab" 
+                data-bs-toggle="tab" 
+                data-bs-target="#water-level" 
+                type="button" 
+                role="tab" 
+                aria-controls="water-level" 
+                aria-selected="false"> Nivel en tiempo real </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="panel-tab-content-fews">
+
+        <div class="tab-pane fade show active" id="streamflow" role="tabpanel" aria-labelledby="streamflow-tab">
+            <div class="container-fluid">
+                {% gizmo streamflow_plot %}
+                <button type="button" class="btn btn-sm btn-primary" onclick="descargarArchivo('get-fews-streamflow-data-xlsx')">
+                    <i class="fa-solid fa-download"></i> Descargar serie de caudal
+                </button>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="water-level" role="tabpanel" aria-labelledby="water-level-tab">
+            <div class="container-fluid">
+                {% gizmo waterlevel_plot %}
+                <div class="container-fluid">
+                    {% gizmo streamflow_plot %}
+                    <button type="button" class="btn btn-sm btn-primary" onclick="descargarArchivo('get-fews-water-level-data-xlsx')">
+                        <i class="fa-solid fa-download"></i> Descargar serie de niveles
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+
+        function descargarArchivo(api_name){
+            url = `${server}/apps/hydroviewer-colombia/${api_name}/?code=${global_station}`
+            window.location.href = url;
+        }
+
+    </script>
+{% endblock %}

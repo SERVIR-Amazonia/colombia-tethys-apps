@@ -172,7 +172,8 @@ class Update_forecast_db:
 		"""
 		if "ERROR" == input_data:
 			rv = pd.DataFrame(data = {self.dict_aux['Datetime column name']    : [pd.NaT],
-									  'ensemble' : [float('nan')]})
+									  'ensemble' : [float('nan')],
+									  'ensemble_52_m^3/s' : [float('nan')]})
 			return rv
 		else:
 			"""

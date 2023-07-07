@@ -16,14 +16,15 @@ from sqlalchemy import create_engine
 from pandas_geojson import to_geojson
 
 # Geoglows
+import math
+import requests
 import geoglows
 import numpy as np
-import math
+import HydroErr as he
+import datetime as dt
 import hydrostats as hs
 import hydrostats.data as hd
-import HydroErr as he
 import plotly.graph_objs as go
-import datetime as dt
 
 # Base
 import io
@@ -161,6 +162,53 @@ def get_forecast_record_date(comid, date):
     return(outdf)
 
 
+def get_fews_data(station_code, folder, file_subfix):
+    # TODO : Change with fews postgres implementation
+    url = 'http://fews.ideam.gov.co/colombia/{}/00'.format(folder)\
+          + station_code + '{}.json'.format(file_subfix)
+    try:
+        # Call data
+        f = requests.get(url, verify=False)
+        data = f.json()
+        
+        # Extract data
+        observedDischarge = (data.get('obs'))
+        sensorDischarge = (data.get('sen'))
+        observedDischarge = (observedDischarge.get('data'))
+        sensorDischarge = (sensorDischarge.get('data'))
+        datesObservedDischarge = [row[0] for row in observedDischarge]
+        observedDischarge = [row[1] for row in observedDischarge]
+        datesSensorDischarge = [row[0] for row in sensorDischarge]
+        sensorDischarge = [row[1] for row in sensorDischarge]
+
+        # Build dataframe discharge
+        observedDischarge_df = pd.DataFrame(data={'date' : datesObservedDischarge,
+                                                  'data' : observedDischarge})
+        observedDischarge_df['date'] = pd.to_datetime(observedDischarge_df['date'], format='%Y/%m/%d %H:%M')
+        observedDischarge_df['data'] = observedDischarge_df['data'].astype(float)
+        observedDischarge_df.dropna(inplace=True)
+        observedDischarge_df.set_index('date', inplace = True)
+        
+        # Build dataframe sensor
+        sensorDischarge_df   = pd.DataFrame(data={'date' : datesSensorDischarge,
+                                                'data' : sensorDischarge})
+        sensorDischarge_df['date'] = pd.to_datetime(sensorDischarge_df['date'], format='%Y/%m/%d %H:%M')
+        sensorDischarge_df['data'] = sensorDischarge_df['data'].astype(float)
+        sensorDischarge_df.dropna(inplace=True)
+        sensorDischarge_df.set_index('date', inplace=True)
+
+    except:
+        # Build discharge dataframe
+        observedDischarge_df = pd.DataFrame(data = {'date' : [pd.NaT],
+                                                  'data' : [np.nan]})
+        observedDischarge_df.set_index('date', inplace = True)
+
+        # Build sensor dataframe
+        sensorDischarge_df = pd.DataFrame(data = {'date' : [pd.NaT],
+                                                  'data' : [np.nan]})
+        sensorDischarge_df.set_index('date', inplace=True)
+
+    return observedDischarge_df, sensorDischarge_df
 
 ####################################################################################################
 ##                                      PLOTTING FUNCTIONS                                        ##
@@ -181,6 +229,7 @@ def get_daily_average_plot(sim, comid):
     # Generate the output
     chart_obj = go.Figure(data=[daily_avg_sim_Q], layout=layout)
     return(chart_obj)
+
 
 # Plotting monthly averages values
 def get_monthly_average_plot(sim, comid):
@@ -289,6 +338,56 @@ def get_forecast_plot(comid, stats, rperiods, records):
     return(hydroviewer_figure)
 
 
+# FEWS plot
+def plot_fews_time_series(data, title, axis_names, hlines : dict = None):
+
+    # Build image
+    fews_plot = go.Figure()
+
+    # Add tracers
+    x_list = []
+    for data_i, color_i, name_i in list(zip(data['data'], data['color'], data['name'])):
+        fews_plot.add_trace(go.Scatter(x = data_i.index,
+                                       y = data_i[data_i.columns].values.flatten(),
+                                       mode = 'lines+markers',
+                                       marker_color=color_i,
+                                       name = name_i,
+                                       connectgaps=False,
+                                       legendgroup='G1',
+                                       legendgrouptitle_text="Método de obtención"))
+        x_list += data_i.index.tolist()
+
+    if 0 >= len(x_list):
+       x_list = [np.nan]
+
+    x_ini = np.min(x_list)
+    x_end = np.max(x_list)
+    
+    if hlines is not None:   
+        # Add hlines
+        for data_i, color_i, name_i in list(zip(hlines['data'], hlines['color'], hlines['name'])):
+
+            if not np.isnan(data_i):
+                name_line = '{} - {:.2f} {}'.format(name_i, data_i, hlines['units'])
+            else:
+                name_line = name_i
+            
+            fews_plot.add_trace(go.Scatter(x = [x_ini, x_end],
+                                           y = [data_i, data_i],
+                                           mode = 'lines',
+                                           marker_color=color_i,
+                                           name = name_line,
+                                           connectgaps=False,
+                                           legendgroup='G2',
+                                           legendgrouptitle_text="Umbrales"))
+    
+    fews_plot.update_layout(title=title,
+                            yaxis_title=axis_names[0],
+                            xaxis_title=axis_names[1],
+                            legend_title="Leyenda")
+   
+    return fews_plot
+
 ####################################################################################################
 ##                                   CONTROLLERS AND REST APIs                                    ##
 ####################################################################################################
@@ -297,6 +396,50 @@ def get_forecast_plot(comid, stats, rperiods, records):
 @controller(name='home', url='hydroviewer-colombia')
 def home(request):
     return render(request, 'hydroviewer_colombia/home.html')
+
+
+# Return data and plots for the selected comid
+@controller(name='get_data_fews', url='hydroviewer-colombia/get-data-fews')
+def get_data_fews(request):
+    # Retrieving GET arguments
+    code      = request.GET['code']
+    umaxhis   = float(request.GET['umaxhis'])
+    ubajos    = float(request.GET['ubajos'])
+    uamarilla = float(request.GET['uamarilla'])
+    unaranja  = float(request.GET['unaranja'])
+    uroja     = float(request.GET['uroja'])
+
+    plot_width = float(request.GET['width']) - 12
+
+    # Load data
+    obs_st, sen_st = get_fews_data(code, 'jsonQ', 'Qobs')
+    obs_wl, sen_wl = get_fews_data(code, 'jsonH', 'Hobs')
+
+    # Plot results
+    streamflow_plot  = plot_fews_time_series(data  = {'data'  : [obs_st, sen_st],
+                                                      'color' : ['green', 'blue'],
+                                                      'name'  : ['Observado' , 'Sensor']},
+                                             title = 'Caudal observado en tiempo real. [Estación : {}]'.format(code),
+                                             axis_names = ['Caudal m3/s', 'fecha'],
+                                             )
+    
+    waterlevel_plot = plot_fews_time_series(data  = {'data'  : [obs_wl, sen_wl],
+                                                     'color' : ['green', 'blue'],
+                                                     'name'  : ['Observado' , 'Sensor']},
+                                            hlines = {'data'  : [umaxhis, ubajos, uamarilla, unaranja, uroja],
+                                                      'color' : ['black', 'purple', 'yellow', 'orange', 'red'],
+                                                      'name'  : ['Máximos', 'Bajos', 'Amarilla', 'Naranja', 'Roja'],
+                                                      'units' : 'm'},
+                                            title = 'Nivel observado en tiempo real. [Estación : {}]'.format(code),
+                                            axis_names = ['Nivel m', 'fecha']
+                                            )
+
+    context = {
+       "streamflow_plot": PlotlyView(streamflow_plot.update_layout(width = plot_width)),
+       "waterlevel_plot": PlotlyView(waterlevel_plot.update_layout(width = plot_width))
+    }
+
+    return render(request, 'hydroviewer_colombia/panel_fews.html', context) 
 
 
 # Return data and plots for the selected comid
@@ -407,6 +550,38 @@ def get_raw_forecast_date(request):
     return render(request, 'hydroviewer_colombia/forecast_panel.html', context)
 
 
+@controller(name = 'get_fews_alerts', 
+            url  = 'hydroviewer-colombia/get-fews-alerts')
+def get_fews_alerts(request):
+   # Establish connection to database
+    db = create_engine(tokencon)
+    conn = db.connect()
+    try:
+        # Query to database
+        stations = pd.read_sql("select * from stations_fews", conn)
+    finally:
+       conn.close()
+    db.dispose()
+    
+    # DB mannagement
+    for col in stations.columns:
+        stations[col] = stations[col].astype('str')
+    stations['lat'] = stations['lat'].astype('float')
+    stations['lng'] = stations['lng'].astype('float')
+
+    stations = to_geojson(
+        df = stations,
+        lat = "lat",
+        lon = "lng",
+        properties = ['id', 'nombre', 'lng', 'lat', 'altitud', 'corriente', 'subzona', 'zona',
+                      'cenpoblado', 'municipio', 'ctg', 'cotacero', 'areaaferete', 'depart',
+                      'alert', 'uroja', 'unaranja', 'uamarilla', 'ubajos', 'umaxhis',
+                      'umbralsen', 'umbralobs', 'ultimonivelsen', 'ultimonivelobs']
+    )
+
+    return JsonResponse(stations)
+
+
 # Return alerts (in geojson format)
 @controller(name='get_alerts',url='hydroviewer-colombia/get-alerts')
 def get_alerts(request):
@@ -421,7 +596,9 @@ def get_alerts(request):
     stations.rename(columns={'hydroid'    : 'comid',
                              'dpto_cnmbr' : 'loc0',
                              'nom_zh'     : 'loc1',
-                             'nom_szh'    : 'loc2'}, inplace = True)
+                             'nom_szh'    : 'loc2',
+                             'nombre_mpi' : 'loc3',
+                             'nom_ah'     : 'loc4'}, inplace = True)
 
     for col in stations.columns:
         stations[col] = stations[col].astype('str')
@@ -435,7 +612,7 @@ def get_alerts(request):
         df = stations,
         lat = "latitude",
         lon = "longitude",
-        properties = ["comid", "latitude", "longitude", "river", "loc0", "loc1", "loc2", "alert"]
+        properties = ["comid", "latitude", "longitude", "river", "loc0", "loc1", "loc2", "loc3", "loc4", "alert"]
     )
     return JsonResponse(stations)
 
@@ -522,6 +699,71 @@ def get_forecast_xlsx(request):
     response['Content-Disposition'] = 'attachment; filename=ensemble_forecast.xlsx'
     response.write(output.getvalue())
     return response
+
+
+# Retrieve xlsx data
+@controller(name='get_fews_streamflow_data_xlsx',url='hydroviewer-colombia/get-fews-streamflow-data-xlsx')
+def get_fews_streamflow_data_xlsx(request):
+    # Retrieving GET arguments
+    station_code = request.GET['code']
+
+    # Database download
+    obs_st, sen_st = get_fews_data(station_code, 'jsonQ', 'Qobs')
+    rv = pd.merge(left=obs_st.reset_index(),
+                  right=sen_st.reset_index(),
+                  how='outer', 
+                  on='date',
+                  suffixes=['Caudal observado', 'Caudal sensor'],
+                  )
+    rv.rename(columns={col : col.replace('data', '') for col in rv.columns}, inplace=True)
+    rv.sort_values(by=['date'], inplace=True)
+    rv.reset_index(drop=True, inplace=True)
+
+    # Crear el archivo Excel
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    rv.to_excel(writer, sheet_name='Caudal tiempo real', index=True)  # Aquí se incluye el índice
+    writer.save()
+    output.seek(0)
+
+    # Configurar la respuesta HTTP para descargar el archivo
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=caudal_tiempo_real_{}.xlsx'.format(station_code)
+    response.write(output.getvalue())
+    return response
+
+
+# Retrieve xlsx data
+@controller(name='get_fews_water_level_data_xlsx',url='hydroviewer-colombia/get-fews-water-level-data-xlsx')
+def get_fews_water_level_data_xlsx(request):
+    # Retrieving GET arguments
+    station_code = request.GET['code']
+
+    # Database download
+    obs_wl, sen_wl = get_fews_data(station_code, 'jsonH', 'Hobs')
+    rv = pd.merge(left=obs_wl.reset_index(),
+                  right=sen_wl.reset_index(),
+                  how='outer', 
+                  on='date',
+                  suffixes=['Nivel observado', 'Nivel sensor'],
+                  )
+    rv.rename(columns={col : col.replace('data', '') for col in rv.columns}, inplace=True)
+    rv.sort_values(by=['date'], inplace=True)
+    rv.reset_index(drop=True, inplace=True)
+
+    # Crear el archivo Excel
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    rv.to_excel(writer, sheet_name='Nivel tiempo real', index=True)  # Aquí se incluye el índice
+    writer.save()
+    output.seek(0)
+
+    # Configurar la respuesta HTTP para descargar el archivo
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=nivel_tiempo_real_{}.xlsx'.format(station_code)
+    response.write(output.getvalue())
+    return response
+
 
 ############################################################
 @controller(url  = "hydroviewer-colombia/user-manual",

@@ -438,7 +438,16 @@ info.onAdd = function (map) {
     // Create the control panel DOM
     this._div = L.DomUtil.create('div', 'control')
     this._div.innerHTML =  `<div class="control-group">
-                                <label class="label-control" for="select-loc">Niveles de alerta:</label>
+                                <label class="label-control" for="select-loc">Nivel de alerta actual:</label>
+                                <div class="alert-panel-checkbox">
+                                    <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="check-fews" checked>
+                                    <label class="form-check-label" for="check-fews">Alertas FEWS</label>
+                                    </div>
+                                </div>
+                                <br>
+
+                                <label class="label-control" for="select-loc">Niveles de alerta 15 días:</label>
                                 <div class="alert-panel-checkbox">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="check-002yr" checked>
@@ -487,10 +496,15 @@ info.onAdd = function (map) {
                                     ${subhyz}
                                 </select>
                                 <br>
+
+                                <label class="label-control" for="select-fews-station">Estación hidrológica:</label>
+                                <select id="select-fews-station" multiple placeholder="Escriba el código o nombre de la estación."></select>
+                                <br>
                                 
                                 <label for="shpFile" class="label-control">Area geográfica:</label>
                                 <input class="form-control" type="file" id="shpFile" accept=".shp">
                                 <br>
+
                             </div>`;
     L.DomEvent.disableClickPropagation(this._div);
     return this._div;
@@ -498,7 +512,6 @@ info.onAdd = function (map) {
 
 // Add the control panel container to the map
 info.addTo(map);
-
 
 
 // ------------------------------------------------------------------------------------------------------------ //
@@ -579,7 +592,7 @@ $('#select-subhyz').selectize({
     }
 });
 
-
+// Add shapefile
 $("#shpFile").on("change",  function(){
     // Lee el archivo desde la entrada de archivos
     var file = document.getElementById('shpFile').files[0];
@@ -601,101 +614,105 @@ $("#shpFile").on("change",  function(){
 });
 
 
-//  Select box for ZOOM to stations and rivers
-fetch("get-rivers")
+fetch("get-fews-alerts")
     .then((response) => (layer = response.json()))
     .then((layer) => {
-        
         // Format json as input of selectize
-        est_layer = layer.features.map(item => item.properties);
-        
-        // Rendering the select box for rivers
-        $('#select-river').selectize({
-            maxItems: 1,
-            options: est_layer,
-            valueField:  'river',
-            labelField:  'river',
-            searchField: 'river',
-            create: false,
-            onChange: function(value, isOnInitialize) {
-                // Station item selected
-                river_item = est_layer.filter(item => item.river == value);
-                // Remove marker if exists
+        fews_layer = layer.features.map(item => item.properties);
+
+        $("#select-fews-station").selectize({
+            maxItems:     1,
+            options:      fews_layer,
+            valueField:  'nombre',
+            labelField:  'nombre',
+            searchField: ['nombre'],
+            create : false,
+            onChange : function(value, isOnInitialize) {
+                est_item = fews_layer.filter(item => item.nombre == value)[0];
+
                 if (typeof ss_marker !== 'undefined') {
                     map.removeLayer(ss_marker)
                 }
-                // Create the layer Groups that contain the selected stations
-                ss_marker = L.layerGroup();
-                // Add marker to visualize the selected stations
-                river_item.map(item => {
-                    //L.marker([item.latitud, item.longitud]).addTo(ss_river)
-                    L.circleMarker([item.latitude, item.longitude], {
-                        radius : 7,
-                        color  : '#AD2745',
-                        opacity: 0.75,
-                      }).addTo(ss_marker);
-                });
-                ss_marker.addTo(map);
-                
-                // Coordinates of selected stations
-                lon_item = river_item.map(item => item.longitude);
-                lat_item = river_item.map(item => item.latitude);
+
+                ss_marker = L.circleMarker([est_item.lat, est_item.lng], {
+                    radius : 7,
+                    color  : '#AD2745',
+                    opacity: 0.75,
+                  }).addTo(map);
+
                 // Bounds
-                southWest = L.latLng(Math.min(...lat_item), Math.min(...lon_item));
-                northEast = L.latLng(Math.max(...lat_item), Math.max(...lon_item));
+                southWest = L.latLng(est_item.lat - 0.01, est_item.lng - 0.01);
+                northEast = L.latLng(est_item.lat + 0.01, est_item.lng + 0.01);
                 bounds = L.latLngBounds(southWest, northEast);
+
                 // Fit the map
                 map.fitBounds(bounds);
-            }
+            },
         });
     });
 
 
+// Config slider selection
+$('#check-002yr').on('change', function () {
+    if($('#check-002yr').is(':checked')){
+        est_R002.addTo(map);
+    } else {
+        map.removeLayer(est_R002); 
+    };
+});
 
-    $('#check-002yr').on('change', function () {
-        if($('#check-002yr').is(':checked')){
-            est_R002.addTo(map);
-        } else {
-            map.removeLayer(est_R002); 
-        };
-    });
-    
-    $('#check-005yr').on('change', function () {
-        if($('#check-005yr').is(':checked')){
-            est_R005.addTo(map);
-        } else {
-            map.removeLayer(est_R005); 
-        };
-    });
-    
-    $('#check-010yr').on('change', function () {
-        if($('#check-010yr').is(':checked')){
-            est_R010.addTo(map);
-        } else {
-            map.removeLayer(est_R010); 
-        };
-    });
-    
-    $('#check-025yr').on('change', function () {
-        if($('#check-025yr').is(':checked')){
-            est_R025.addTo(map);
-        } else {
-            map.removeLayer(est_R025); 
-        };
-    });
-    
-    $('#check-050yr').on('change', function () {
-        if($('#check-050yr').is(':checked')){
-            est_R050.addTo(map);
-        } else {
-            map.removeLayer(est_R050); 
-        };
-    });
-    
-    $('#check-100yr').on('change', function () {
-        if($('#check-100yr').is(':checked')){
-            est_R100.addTo(map);
-        } else {
-            map.removeLayer(est_R100); 
-        };
-    });
+$('#check-005yr').on('change', function () {
+    if($('#check-005yr').is(':checked')){
+        est_R005.addTo(map);
+    } else {
+        map.removeLayer(est_R005); 
+    };
+});
+
+$('#check-010yr').on('change', function () {
+    if($('#check-010yr').is(':checked')){
+        est_R010.addTo(map);
+    } else {
+        map.removeLayer(est_R010); 
+    };
+});
+
+$('#check-025yr').on('change', function () {
+    if($('#check-025yr').is(':checked')){
+        est_R025.addTo(map);
+    } else {
+        map.removeLayer(est_R025); 
+    };
+});
+
+$('#check-050yr').on('change', function () {
+    if($('#check-050yr').is(':checked')){
+        est_R050.addTo(map);
+    } else {
+        map.removeLayer(est_R050); 
+    };
+});
+
+$('#check-100yr').on('change', function () {
+    if($('#check-100yr').is(':checked')){
+        est_R100.addTo(map);
+    } else {
+        map.removeLayer(est_R100); 
+    };
+});
+
+$('#check-fews').on('change', function () {
+    if($('#check-fews').is(':checked')){
+        fewsStaR0.addTo(map);
+        fewsStaBass.addTo(map);
+        fewsStaYl.addTo(map);
+        fewsStaOr.addTo(map);
+        fewsStaRd.addTo(map);
+    } else {
+        map.removeLayer(fewsStaR0);
+        map.removeLayer(fewsStaBass);
+        map.removeLayer(fewsStaYl);
+        map.removeLayer(fewsStaOr);
+        map.removeLayer(fewsStaRd);
+    };
+});

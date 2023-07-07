@@ -86,117 +86,205 @@
   
 
 
-    <!-- Data Station Panel -->
-    <div class="modal fade" id="panel-modal" tabindex="-1" role="dialog" aria-labelledby="panel-modal-label">
-      <div class="modal-dialog  modal-dialog-centered modal-xl" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <div class="modal-title" id="panel-modal-label">
-              <div>
-                <img src="{% static 'hydroviewer_colombia/images/logos.png' %}" width="600px">
-              </div>
-              <div>
-                <div class="container">
-                  <div class="row">
-                    <div class="col">
-                      <h5 id="panel-title-custom">South America</h5>
-                    </div>
-                  </div>
-                  <div class="row" id="panel-station-information">
-                    <div class="col">
-                      <div class="row-station" id="station-comid-custom"> <b>COMID:</b> &nbsp   </div>
-                      <!--
-                      <div class="row-station" id="station-river-custom"> <b>RIO:</b> &nbsp   </div>
-                      -->
-                    </div>
-                    <div class="col">
-                      <!--
-                      <div class="row-station" id="station-latitude-custom"> <b>LATITUD:</b> &nbsp   </div>
-                      <div class="row-station" id="station-longitude-custom"> <b>LONGITUD:</b> &nbsp   </div>
-                      -->
-                    </div>
-                    <div class="col">
-                      <!--
-                      <div class="row-station" id="station-locality1-custom"> <b>ZONA HIDROGRÁFICA:</b> &nbsp   </div>
-                      <div class="row-station" id="station-locality2-custom"> <b>SUBZONA HIDROGRÁFICA :</b> &nbsp   </div>
-                      -->
-                    </div>
-                  </div>
-                </div>
-              </div>
+  <!-- Data Station Panel -->
+  <div class="modal fade" id="panel-modal" tabindex="-1" role="dialog" aria-labelledby="panel-modal-label">
+    <div class="modal-dialog  modal-dialog-centered modal-xl" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title" id="panel-modal-label">
+            <div>
+              <img src="{% static 'hydroviewer_colombia/images/logos.png' %}" width="600px">
             </div>
             <div>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <div class="container">
+                <div class="row">
+                  <div class="col">
+                    <h5 id="panel-title-custom">South America</h5>
+                  </div>
+                </div>
+                <div class="row" id="panel-station-information">
+                  <div class="col">
+                    <div class="row-station" id="station-comid-custom"> <b>COMID:</b> &nbsp   </div>
+                    <div class="row-station" id="station-depto-custom"> <b>DEPARTAMENTO: </b> &nbsp   </div>
+                    <div class="row-station" id="station-mun-custom"> <b>MUNICIPIO: </b> &nbsp   </div>
+                  </div>
+                  <div class="col">
+                    <div class="row-station" id="station-locality1-custom"> <b>ÁREA HIDROGRÁFICA:</b> &nbsp   </div>
+                    <div class="row-station" id="station-locality2-custom"> <b>ZONA HIDROGRÁFICA :</b> &nbsp   </div>
+                    <div class="row-station" id="station-locality3-custom"> <b>SUBZONA HIDROGRÁFICA :</b> &nbsp   </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div id="modal-body-panel-custom" class="modal-body" style="min-width: 100% !important;">
-              <ul class="nav nav-tabs" id="panel-tab" role="tablist">
-                <li class="nav-item" role="presentation">
-                  <button 
-                    class="nav-link active" 
-                    id="hydrograph-tab" 
-                    data-bs-toggle="tab" 
-                    data-bs-target="#hydrograph" 
-                    type="button" 
-                    role="tab" 
-                    aria-controls="hydrograph" 
-                    aria-selected="true"> Simulación histórica </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                  <button 
-                    class="nav-link" 
-                    id="visual-analisis-tab" 
-                    data-bs-toggle="tab" 
-                    data-bs-target="#visual-analisis" 
-                    type="button" 
-                    role="tab" 
-                    aria-controls="visual-analisis" 
-                    aria-selected="false">Análisis visual</button>
-                </li>
-                <li class="nav-item" role="presentation">
-                  <button 
-                    class="nav-link" 
-                    id="forecast-tab" 
-                    data-bs-toggle="tab"
-                    data-bs-target="#forecast" 
-                    type="button" 
-                    role="tab" 
-                    aria-controls="forecast" 
-                    aria-selected="false"> Pronóstico </button>
-                </li>
-              </ul>
-              <div class="tab-content" id="panel-tab-content">
-                <div class="tab-pane fade show active" id="hydrograph" role="tabpanel" aria-labelledby="hydrograph-tab">
-                  <div class="loading-container" style="height: 350px; padding-top: 12px;"> 
-                    <div class="loading"> 
-                      <h2>LOADING DATA</h2>
-                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
-                    </div>
-                  </div>
-                </div>
-                <div class="tab-pane fade" id="visual-analisis" role="tabpanel" aria-labelledby="visual-analisis-tab">
-                  <div class="loading-container" style="height: 350px; padding-top: 12px;">
-                    <br> 
-                    <div class="loading"> 
-                      <h2>LOADING DATA</h2>
-                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
-                    </div>
-                  </div>
-                </div>
-                <div class="tab-pane fade" id="forecast" role="tabpanel" aria-labelledby="forecast-tab">
-                  <div class="loading-container" style="height: 350px; padding-top: 12px;"> 
-                    <div class="loading"> 
-                      <h2>LOADING DATA</h2>
-                        <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
-                    </div>
-                  </div>
-                </div>
-                
-              </div>
+          <div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
+        </div>
+
+        <div id="modal-body-panel-custom" class="modal-body" style="min-width: 100% !important;">
+            <ul class="nav nav-tabs" id="panel-tab" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button 
+                  class="nav-link active" 
+                  id="hydrograph-tab" 
+                  data-bs-toggle="tab" 
+                  data-bs-target="#hydrograph" 
+                  type="button" 
+                  role="tab" 
+                  aria-controls="hydrograph" 
+                  aria-selected="true"> Simulación histórica </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button 
+                  class="nav-link" 
+                  id="visual-analisis-tab" 
+                  data-bs-toggle="tab" 
+                  data-bs-target="#visual-analisis" 
+                  type="button" 
+                  role="tab" 
+                  aria-controls="visual-analisis" 
+                  aria-selected="false">Análisis visual</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button 
+                  class="nav-link" 
+                  id="forecast-tab" 
+                  data-bs-toggle="tab"
+                  data-bs-target="#forecast" 
+                  type="button" 
+                  role="tab" 
+                  aria-controls="forecast" 
+                  aria-selected="false"> Pronóstico </button>
+              </li>
+            </ul>
+            <div class="tab-content" id="panel-tab-content">
+              <div class="tab-pane fade show active" id="hydrograph" role="tabpanel" aria-labelledby="hydrograph-tab">
+                <div class="loading-container" style="height: 350px; padding-top: 12px;"> 
+                  <div class="loading"> 
+                    <h2>LOADING DATA</h2>
+                      <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
+                  </div>
+                </div>
+              </div>
+              <div class="tab-pane fade" id="visual-analisis" role="tabpanel" aria-labelledby="visual-analisis-tab">
+                <div class="loading-container" style="height: 350px; padding-top: 12px;">
+                  <br> 
+                  <div class="loading"> 
+                    <h2>LOADING DATA</h2>
+                      <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
+                  </div>
+                </div>
+              </div>
+              <div class="tab-pane fade" id="forecast" role="tabpanel" aria-labelledby="forecast-tab">
+                <div class="loading-container" style="height: 350px; padding-top: 12px;"> 
+                  <div class="loading"> 
+                    <h2>LOADING DATA</h2>
+                      <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
+                  </div>
+                </div>
+              </div>
+            </div>
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Data FEWS Station Panel -->
+  <div class="modal fade" id="panel-modal-fews" tabindex="-1" role="dialog" aria-labelledby="panel-modal-label">
+    <div class="modal-dialog  modal-dialog-centered modal-xl" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title" id="panel-modal-label">
+            <div>
+              <img src="{% static 'hydroviewer_colombia/images/logos.png' %}" width="600px">
+            </div>
+            <div>
+              <div class="container">
+                <div class="row">
+                  <div class="col">
+                    <h5 id="panel-title-custom">Niveles de alerta</h5>
+                  </div>
+                </div>
+                <div class="row" id="panel-station-information">
+                  <div class="col">
+                    <div class="row-station" id="station-code-custom-fw"> <b>CÓDIGO: </b> &nbsp   </div>
+                    <div class="row-station" id="station-name-custom-fw"> <b>NOMBRE: </b> &nbsp   </div>
+                    <div class="row-station" id="station-latitude-custom-fw"> <b>LATITUD: </b> &nbsp   </div>
+                    <div class="row-station" id="station-longitude-custom-fw"> <b>LONGITUD: </b> &nbsp   </div>
+                  </div>
+                  <div class="col">
+                    <div class="row-station" id="station-depto-custom-fw"> <b>DEPARTAMENTO: </b> &nbsp   </div>
+                    <div class="row-station" id="station-municipio-custom-fw"> <b>MUNICIPIO: </b> &nbsp   </div>
+                  </div>
+                  <div class="col">
+                    <div class="row-station" id="station-locality1-custom-fw"> <b>CENTRO POBLADO:</b> &nbsp   </div>
+                    <div class="row-station" id="station-locality2-custom-fw"> <b>ZONA HIDROGRÁFICA :</b> &nbsp   </div>
+                    <div class="row-station" id="station-locality3-custom-fw"> <b>SUBZONA HIDROGRÁFICA :</b> &nbsp   </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+        </div>
+
+        <div id="modal-body-panel-custom-fews" class="modal-body" style="min-width: 100% !important;">
+            <ul class="nav nav-tabs" id="panel-tab" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button 
+                  class="nav-link active" 
+                  id="streamflow-tab" 
+                  data-bs-toggle="tab" 
+                  data-bs-target="#streamflow" 
+                  type="button" 
+                  role="tab" 
+                  aria-controls="streamflow" 
+                  aria-selected="true"> Caudal en tiempo real </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button 
+                  class="nav-link" 
+                  id="water-level-tab" 
+                  data-bs-toggle="tab" 
+                  data-bs-target="#water-level" 
+                  type="button" 
+                  role="tab" 
+                  aria-controls="water-level" 
+                  aria-selected="false"> Nivel en tiempo real </button>
+              </li>
+            </ul>
+
+            <div class="tab-content" id="panel-tab-content-fews">
+              <div class="tab-pane fade show active" id="streamflow" role="tabpanel" aria-labelledby="streamflow-tab">
+                <div class="loading-container" style="height: 350px; padding-top: 12px;"> 
+                  <div class="loading"> 
+                    <h2>LOADING DATA</h2>
+                      <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
+                  </div>
+                </div>
+              </div>
+
+              <div class="tab-pane fade" id="water-level" role="tabpanel" aria-labelledby="water-level-tab">
+                <div class="loading-container" style="height: 350px; padding-top: 12px;">
+                  <br> 
+                  <div class="loading"> 
+                    <h2>LOADING DATA</h2>
+                      <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
+                  </div>
+                </div>
+              </div>
+
+            </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
 {% endblock %}
 
 
