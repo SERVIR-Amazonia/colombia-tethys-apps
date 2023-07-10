@@ -101,14 +101,15 @@ class Update_alarm_level:
 
 			sim_hist_df.set_index('datetime', inplace=True)
 			sim_hist_df.index = pd.to_datetime(sim_hist_df.index, '%Y-%m-%d')
+			# TODO : remove whwere geoglows server works
+			sim_hist_df = sim_hist_df[sim_hist_df.index < '2022-06-01'].copy()
 			sim_hist_df.where(sim_hist_df > 0, 0, inplace=True)
 
 			obs_hist_df.set_index('datetime', inplace=True)
 			obs_hist_df.index = pd.to_datetime(obs_hist_df.index, '%Y-%m-%d')
 
 			# Fix simulated and observed data at same dates
-			sim_hist_df, obs_hist_df = self.__asincro_df__(sim_hist_df, obs_hist_df)
-
+			# sim_hist_df, obs_hist_df = self.__asincro_df__(sim_hist_df, obs_hist_df)
 			
 			if len(obs_hist_df.index.month.unique()) < 12:
 				print(15 * '-')
@@ -117,9 +118,16 @@ class Update_alarm_level:
 				print(15 * '-')
 
 			# Bias correction fix data
+			"""
 			forecast_df = self.__bias_correction_forecast__(fore_nofix = forecast_df,
 														    sim_hist   = sim_hist_df,
 															obs_hist   = obs_hist_df)
+			"""
+
+			forecast_df = self.get_corrected_forecast(simulated_df = sim_hist_df,
+					     							  ensemble_df  = forecast_df, 
+													  observed_df  = obs_hist_df)
+			
 			sim_hist_df = self.__bias_correction__(sim_hist_df, obs_hist_df)
 
 			# Calc warnings level
@@ -297,6 +305,37 @@ class Update_alarm_level:
 	
 
 	# Bias correction methods
+	def get_corrected_forecast(self, simulated_df, ensemble_df, observed_df):
+		monthly_simulated = simulated_df[simulated_df.index.month == (ensemble_df.index[0]).month].dropna()
+		monthly_observed = observed_df[observed_df.index.month == (ensemble_df.index[0]).month].dropna()
+		min_simulated = np.min(monthly_simulated.iloc[:, 0].to_list())
+		max_simulated = np.max(monthly_simulated.iloc[:, 0].to_list())
+		min_factor_df = ensemble_df.copy()
+		max_factor_df = ensemble_df.copy()
+		forecast_ens_df = ensemble_df.copy()
+		for column in ensemble_df.columns:
+			tmp = ensemble_df[column].dropna().to_frame()
+			min_factor = tmp.copy()
+			max_factor = tmp.copy()
+			min_factor.loc[min_factor[column] >= min_simulated, column] = 1
+			min_index_value = min_factor[min_factor[column] != 1].index.tolist()
+			for element in min_index_value:
+				min_factor[column].loc[min_factor.index == element] = tmp[column].loc[tmp.index == element] / min_simulated
+			max_factor.loc[max_factor[column] <= max_simulated, column] = 1
+			max_index_value = max_factor[max_factor[column] != 1].index.tolist()
+			for element in max_index_value:
+				max_factor[column].loc[max_factor.index == element] = tmp[column].loc[tmp.index == element] / max_simulated
+			tmp.loc[tmp[column] <= min_simulated, column] = min_simulated
+			tmp.loc[tmp[column] >= max_simulated, column] = max_simulated
+			forecast_ens_df.update(pd.DataFrame(tmp[column].values, index=tmp.index, columns=[column]))
+			min_factor_df.update(pd.DataFrame(min_factor[column].values, index=min_factor.index, columns=[column]))
+			max_factor_df.update(pd.DataFrame(max_factor[column].values, index=max_factor.index, columns=[column]))
+		corrected_ensembles = ggs.bias.correct_forecast(forecast_ens_df, simulated_df, observed_df)
+		corrected_ensembles = corrected_ensembles.multiply(min_factor_df, axis=0)
+		corrected_ensembles = corrected_ensembles.multiply(max_factor_df, axis=0)
+		return(corrected_ensembles)
+
+	"""
 	def __bias_correction_forecast__(self, sim_hist, fore_nofix, obs_hist):
 		'''Correct Bias Forecasts'''
 
@@ -338,7 +377,7 @@ class Update_alarm_level:
 		corrected_ensembles = corrected_ensembles.multiply(max_factor_df, axis=0)
 
 		return corrected_ensembles
-
+	"""
 
 	def __bias_correction__(self, sim_hist, obs_hist):
 		return ggs.bias.correct_historical(simulated_data = sim_hist,
