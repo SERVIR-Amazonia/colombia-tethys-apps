@@ -458,6 +458,9 @@ def get_data(request):
 
     # Data series
     simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
+    # TODO : remove whwere geoglows server works
+    simulated_data = simulated_data[simulated_data.index < '2022-06-01'].copy()
+
     ensemble_forecast = get_format_data("select * from f_{0};".format(station_comid), conn)
     forecast_records = get_format_data("select * from fr_{0};".format(station_comid), conn)
     ensemble_stats = get_ensemble_stats(ensemble_forecast)
@@ -523,6 +526,9 @@ def get_raw_forecast_date(request):
 
     # Data series
     simulated_data    = get_format_data("select * from hs_{0};".format(station_comid), conn)
+    # TODO : remove whwere geoglows server works
+    simulated_data = simulated_data[simulated_data.index < '2022-06-01'].copy()
+
     ensemble_forecast = get_forecast_date(station_comid, forecast_date)
     forecast_records  = get_forecast_record_date(station_comid, forecast_date)
     ensemble_stats    = get_ensemble_stats(ensemble_forecast)
@@ -661,6 +667,9 @@ def get_simulated_data_xlsx(request):
     conn = db.connect()
     # Data series
     simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
+    # TODO : remove whwere geoglows server works
+    simulated_data = simulated_data[simulated_data.index < '2022-06-01'].copy()
+
     simulated_data = simulated_data.rename(columns={
                                 "streamflow_m^3/s": "Historical simulation (m3/s)"})
     # Crear el archivo Excel
