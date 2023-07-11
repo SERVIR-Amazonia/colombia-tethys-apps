@@ -79,7 +79,7 @@ class Update_alarm_level:
 
 		# Build alert to update
 		alert_rv = []
-		for num, row in df_id_alert.iterrows():
+		for _, row in df_id_alert.iterrows():
 			
 			row_id    = row[pgres_tab_coln_id]
 
@@ -120,19 +120,20 @@ class Update_alarm_level:
 			# Bias correction fix data
 			"""
 			forecast_df = self.__bias_correction_forecast__(fore_nofix = forecast_df,
-														    sim_hist   = sim_hist_df,
+															sim_hist   = sim_hist_df,
 															obs_hist   = obs_hist_df)
 			"""
 
 			forecast_df = self.get_corrected_forecast(simulated_df = sim_hist_df,
-					     							  ensemble_df  = forecast_df, 
-													  observed_df  = obs_hist_df)
+													ensemble_df  = forecast_df, 
+													observed_df  = obs_hist_df)
 			
-			sim_hist_df = self.__bias_correction__(sim_hist_df, obs_hist_df)
+			sim_hist_df = self.__bias_correction__(sim_hist = sim_hist_df, 
+												obs_hist = obs_hist_df)
 
 			# Calc warnings level
 			warnings_level = self.__get_warning_level__(comid = row_id,
-												        data  = sim_hist_df)
+														data  = sim_hist_df)
 
 			# Forecast stats
 			ensemble_stats = self.get_ensemble_stats(forecast_df)
@@ -410,7 +411,7 @@ if __name__ == "__main__":
 	pgres_tab_obshist = 'observed_streamflow_data'
 	pgres_tab_name = 'stations_streamflow'
 	Update_alarm_level(pgres_tab_obshist, pgres_tab_name)
-	
+
 	print('Water level data update')
 	pgres_tab_obshist = 'observed_waterlevel_data'
 	pgres_tab_name = 'stations_waterlevel'
