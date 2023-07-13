@@ -63,15 +63,16 @@ def get_return_periods(comid, data):
     # Return periods
     return_periods = [100, 50, 25, 10, 5, 2]
     
-    '''
+    
     return_periods_values = []
     # Compute the corrected return periods
+    
     for rp in return_periods:
       return_periods_values.append(gumbel_1(std_value, mean_value, rp))
-    '''
+    
     
     # JRC FIX
-    return_periods_values = [gumbel_1(std_value, mean_value, rp) for rp in return_periods]
+    # return_periods_values = [gumbel_1(std_value, mean_value, rp) for rp in return_periods]
     
     # Parse to list
     d = {'rivid': [comid], 
@@ -223,6 +224,9 @@ try:
         try:
             # Establish connection
             simulated_data = get_format_data("select * from hs_{0}".format(station_comid), conn)
+            # TODO : remove whwere geoglows server works
+            simulated_data = simulated_data[simulated_data.index < '2022-06-01'].copy()
+
             ensemble_forecast = get_format_data("select * from f_{0}".format(station_comid), conn)
         finally:
             # Close connection
@@ -230,6 +234,7 @@ try:
         
         # Return period
         return_periods = get_return_periods(station_comid, simulated_data)
+        
         
         del simulated_data
 

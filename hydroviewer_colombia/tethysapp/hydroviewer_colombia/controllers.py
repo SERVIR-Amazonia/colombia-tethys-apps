@@ -71,13 +71,14 @@ def get_format_data(sql_statement, conn):
 def gumbel_1(std: float, xbar: float, rp: int or float) -> float:
   return -math.log(-math.log(1 - (1 / rp))) * std * .7797 + xbar - (.45 * std)
 
+
 def get_return_periods(comid, data):
     # Stats
     max_annual_flow = data.groupby(data.index.strftime("%Y")).max()
     mean_value = np.mean(max_annual_flow.iloc[:,0].values)
     std_value = np.std(max_annual_flow.iloc[:,0].values)
     # Return periods
-    return_periods = [100, 50, 25, 10, 5, 2]
+    return_periods = [100.0, 50.0, 25.0, 10.0, 5.0, 2.0]
     return_periods_values = []
     # Compute the corrected return periods
     for rp in return_periods:
@@ -94,6 +95,7 @@ def get_return_periods(comid, data):
     corrected_rperiods_df = pd.DataFrame(data=d)
     corrected_rperiods_df.set_index('rivid', inplace=True)
     return(corrected_rperiods_df)
+
 
 def ensemble_quantile(ensemble, quantile, label):
     df = ensemble.quantile(quantile, axis=1).to_frame()
@@ -691,18 +693,28 @@ def get_forecast_xlsx(request):
     # Retrieving GET arguments
     station_comid = request.GET['comid']
     forecast_date = request.GET['fecha']
+    
     # Establish connection to database
-    # db= create_engine(tokencon)
-    # conn = db.connect()
+    db= create_engine(tokencon)
+    conn = db.connect()
+    try:
+        forecast_records = get_format_data("select * from fr_{0};".format(station_comid), conn)
+    finally:
+        conn.close()
+    
     # Raw forecast
     ensemble_forecast = get_forecast_date(station_comid, forecast_date)
     ensemble_stats = get_ensemble_stats(ensemble_forecast)
+    
     # Crear el archivo Excel
     output = io.BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
-    ensemble_stats.to_excel(writer, sheet_name='ensemble_forecast', index=True)  # Aquí se incluye el índice
+    ensemble_stats.to_excel(writer, sheet_name='ensemble_stats', index=True)  # Aquí se incluye el índice
+    ensemble_forecast.to_excel(writer, sheet_name='ensemble_forecast', index=True)  # Aquí se incluye el índice
+    forecast_records.to_excel(writer, sheet_name='forecast_records', index=True)  # Aquí se incluye el índice
     writer.save()
     output.seek(0)
+    
     # Configurar la respuesta HTTP para descargar el archivo
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename=ensemble_forecast.xlsx'
@@ -787,3 +799,61 @@ def user_manual(request):
 def technical_manual(request):
     context = {}
     return render(request, 'hydroviewer_colombia/technical_manual.html', context)
+
+############################################################
+#                          SERVICES                        #
+############################################################ 
+@controller(name='get_image',
+            url='hydroviewer-colombia/get-image')
+def down_load_img(request):
+    
+    # Retrieving GET arguments
+    station_comid  = request.GET['comid']
+    type_graph = request.GET['typeGraph']
+
+    # Establish connection to database
+    db= create_engine(tokencon)
+    conn = db.connect()
+
+    try:
+        # Data series
+        simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
+        # TODO : remove whwere geoglows server works
+        simulated_data = simulated_data[simulated_data.index < '2022-06-01'].copy()
+
+        ensemble_forecast = get_format_data("select * from f_{0};".format(station_comid), conn)
+        forecast_records = get_format_data("select * from fr_{0};".format(station_comid), conn)
+    finally:
+        conn.close()
+
+    db.dispose()
+
+    # Calc ensemble and return periods
+    ensemble_stats = get_ensemble_stats(ensemble_forecast)
+    return_periods = get_return_periods(station_comid, simulated_data)
+
+    # Plots data
+    if 'historical' == type_graph:
+        fig = geoglows.plots.historic_simulation(
+                                        hist = simulated_data,
+                                        rperiods = return_periods,
+                                        outformat = "plotly",
+                                        titles = {'Reach COMID': station_comid})
+        name_file = 'historical'
+    elif 'forecast' == type_graph:
+        fig = get_forecast_plot(
+                                comid = station_comid, 
+                                stats = ensemble_stats, 
+                                rperiods = return_periods, 
+                                records = forecast_records)
+        name_file = 'corrected_forecast'
+
+    # Build image bytes
+    img_bytes = fig.to_image(format="png")
+
+    # Configurar la respuesta HTTP para descargar el archivo
+    response = HttpResponse(content_type="image/jpeg")
+    response['Content-Disposition'] = 'attachment; filename={0}_{1}_RQ.png'.format(name_file, station_comid)
+    response.write(img_bytes)
+
+    return response

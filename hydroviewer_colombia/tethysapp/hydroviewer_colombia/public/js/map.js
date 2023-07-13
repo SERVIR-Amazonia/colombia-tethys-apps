@@ -217,7 +217,7 @@ async function get_data_station(comid, depto, mun, nomAH, nomZH, nomSZH){
     $("#station-mun-custom").html(`<b>MUNICIPIO: </b> &nbsp ${mun}`);
     $("#station-locality1-custom").html(`<b>ÁREA HIDROGRÁFICA:</b> &nbsp ${nomAH}`);
     $("#station-locality2-custom").html(`<b>ZONA HIDROGRÁFICA :</b> &nbsp ${nomZH}`);
-    $("#station-locality3-custom").html(`<b>ZONA HIDROGRÁFICA :</b> &nbsp ${nomSZH}`);
+    $("#station-locality3-custom").html(`<b>SUBZONA HIDROGRÁFICA :</b> &nbsp ${nomSZH}`);
 
     loader = `<div class="loading-container" style="height: 350px; padding-top: 12px;"> 
                 <div class="loading"> 

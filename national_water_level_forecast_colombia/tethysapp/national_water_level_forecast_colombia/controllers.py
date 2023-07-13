@@ -788,6 +788,7 @@ def get_raw_forecast_date(request):
                                     obs_data = {'data'  : [obs_fews, sen_fews],
                                                         'color' : ['blue', 'red'],
                                                         'name'  : ['Nivel observado', 'Nivel sensor']}).update_layout(width = plot_width).to_html()
+    
     # Corrected forecast table
     corr_forecast_table = geoglows.plots.probabilities_table(
                                     stats = corrected_ensemble_stats,
@@ -901,6 +902,7 @@ def get_corrected_forecast_xlsx(request):
         simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
         # TODO : remove whwere geoglows server works
         simulated_data = simulated_data[simulated_data.index < '2022-06-01'].copy()
+        forecast_records = get_format_data("select * from fr_{0};".format(station_comid), conn)
     finally:
         conn.close()
 
@@ -913,10 +915,15 @@ def get_corrected_forecast_xlsx(request):
     # Forecast stats
     corrected_ensemble_stats = get_ensemble_stats(corrected_ensemble_forecast)
     
+    # Forecast record correctes
+    corrected_forecast_records = get_corrected_forecast_records(forecast_records, simulated_data, observed_data)    
+
     # Crear el archivo Excel
     output = io.BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
-    corrected_ensemble_stats.to_excel(writer, sheet_name='corrected_ensemble_forecast', index=True)
+    corrected_ensemble_stats.to_excel(writer, sheet_name='corrected_ensemble_stats', index=True)
+    corrected_ensemble_forecast.to_excel(writer, sheet_name='corrected_ensemble_forecast', index=True)
+    corrected_forecast_records.to_excel(writer, sheet_name='corrected_forecast_records', index=True)
     writer.save()
     output.seek(0)
 
@@ -941,3 +948,94 @@ def user_manual(request):
 def technical_manual(request):
     context = {}
     return render(request, 'national_water_level_forecast_colombia/technical_manual.html', context)
+
+
+############################################################
+#                          SERVICES                        #
+############################################################ 
+@controller(name='get_image',
+            url='national-water-level-forecast-colombia/get-image')
+def down_load_img(request):
+
+    # Retrieving GET arguments
+    station_code  = request.GET['codigo']
+    type_graph = request.GET['typeGraph']
+
+    # Establish connection to database
+    db= create_engine(tokencon)
+    conn = db.connect()
+
+    try:
+        # Stations dataframe
+        stations = pd.read_sql("select codigo, nombre, comid from stations_waterlevel order by codigo", conn)
+        # Read input data
+        input_df = stations[stations['codigo'] == station_code].dropna().reset_index(drop=True)
+        # Extrac data
+        station_comid = str(int(input_df['comid'].values[0]))
+        station_name  = input_df['nombre'].values[0]
+
+        # Data series
+        observed_data = get_format_data("select datetime, s_{0} from observed_waterlevel_data order by datetime;".format(station_code), conn)
+        simulated_data = get_format_data("select * from hs_{0};".format(station_comid), conn)
+        # TODO : remove whwere geoglows server works
+        simulated_data = simulated_data[simulated_data.index < '2022-06-01'].copy()
+        corrected_data = get_bias_corrected_data(simulated_data, observed_data)
+
+        # Raw forecast
+        ensemble_forecast = get_format_data("select * from f_{0};".format(station_comid), conn)
+        forecast_records = get_format_data("select * from fr_{0};".format(station_comid), conn)
+        
+    finally:
+        # Close conection
+        conn.close()
+
+    # Returns periods
+    # return_periods = get_return_periods(station_comid, simulated_data)
+
+    # Corrected forecast
+    corrected_ensemble_forecast = __bias_correction_forecast__(simulated_data, ensemble_forecast, observed_data)
+    corrected_forecast_records = get_corrected_forecast_records(forecast_records, simulated_data, observed_data)
+    corrected_return_periods = get_return_periods(station_comid, corrected_data)
+
+    # FEWS data
+    obs_fews, sen_fews = get_fews_data(station_code)
+
+    # Stats for raw and corrected forecast
+    # ensemble_stats = get_ensemble_stats(ensemble_forecast)
+    corrected_ensemble_stats = get_ensemble_stats(corrected_ensemble_forecast)
+
+    # Merge data (For plots)
+    global merged_sim
+    merged_sim = hd.merge_data(sim_df = simulated_data, obs_df = observed_data)
+    global merged_cor
+    merged_cor = hd.merge_data(sim_df = corrected_data, obs_df = observed_data)
+
+    # PLOT
+    # Ensemble forecast plot
+    if 'historical' == type_graph:
+        fig = plot_historical_waterlevel(
+                    observed_df = observed_data, 
+                    corrected_df = corrected_data, 
+                    station_code = station_code, 
+                    station_name = station_name)
+        name_file = 'historical'
+    elif  'forecast' == type_graph:
+        fig = get_forecast_plot(comid = station_comid, 
+                                site = station_name, 
+                                stats = corrected_ensemble_stats, 
+                                rperiods = corrected_return_periods, 
+                                records = corrected_forecast_records,
+                                obs_data = {'data'  : [obs_fews, sen_fews],
+                                            'color' : ['blue', 'red'],
+                                            'name'  : ['Nivel observado', 'Nivel sensor']})
+        name_file = 'corrected_forecast'
+
+    # Build image bytes
+    img_bytes = fig.to_image(format="png")
+
+    # Configurar la respuesta HTTP para descargar el archivo
+    response = HttpResponse(content_type="image/jpeg")
+    response['Content-Disposition'] = 'attachment; filename={0}_{1}_H.png'.format(name_file, station_code)
+    response.write(img_bytes)
+
+    return response
