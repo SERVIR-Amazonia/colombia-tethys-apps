@@ -958,7 +958,8 @@ def technical_manual(request):
 @api_view(['GET'])
 @authentication_classes((TokenAuthentication,))
 @controller(name='get_image',
-            url='national-water-level-forecast-colombia/get-image')
+            url='national-water-level-forecast-colombia/get-image',
+            login_required=False)
 def download_img(request):
 
     # Retrieving GET arguments
