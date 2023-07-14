@@ -8,6 +8,8 @@ from django.http import JsonResponse
 from django.http import HttpResponse
 from tethys_sdk.routing import controller
 from tethys_sdk.gizmos import PlotlyView, DatePicker
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import api_view, authentication_classes
 
 # Postgresql
 import psycopg2
@@ -16,15 +18,15 @@ from sqlalchemy import create_engine
 from pandas_geojson import to_geojson
 
 # Geoglows
-import geoglows
-import numpy as np
 import math
+import geoglows
+import requests
+import numpy as np
+import datetime as dt
+import HydroErr as he
 import hydrostats as hs
 import hydrostats.data as hd
-import HydroErr as he
 import plotly.graph_objs as go
-import datetime as dt
-import requests
 
 # Base
 import io
@@ -952,10 +954,12 @@ def technical_manual(request):
 
 ############################################################
 #                          SERVICES                        #
-############################################################ 
+############################################################
+@api_view(['GET'])
+@authentication_classes((TokenAuthentication,))
 @controller(name='get_image',
             url='national-water-level-forecast-colombia/get-image')
-def down_load_img(request):
+def download_img(request):
 
     # Retrieving GET arguments
     station_code  = request.GET['codigo']
