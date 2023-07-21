@@ -58,7 +58,7 @@ def data_request(url, params, cnt_fail=0) -> pd.DataFrame:
 		# Condition restart
 		# print('Try : {}'.format(cnt_fail))
 		data.close()
-		time.sleep(2)
+		time.sleep(1)
 		cnt_fail += 1
 		return data_request(url, params, cnt_fail=cnt_fail)
 
