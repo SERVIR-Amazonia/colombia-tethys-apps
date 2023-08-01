@@ -143,7 +143,7 @@ class Update_forecast_db:
 		df = self.__build_dataframe__(df, url_comid, params_comid)
 
 		# Review number of data download
-		if df.shape[1] != 52 or df.shape[0] <= 2:
+		if df.shape[1] != 52 or df.shape[0] <= 2 or not 'ensemble_52_m^3/s' in df.columns:
 			df = data_request(url=url_comid, params=params_comid)
 			df = self.__build_dataframe__(df, url, params=params_comid)
 
@@ -182,15 +182,6 @@ class Update_forecast_db:
 			format is not needed, but it is slower.
 			"""
 			try:
-				'''
-				Some times Datetime column download does not work correctly with date_parser
-				rv = pd.read_csv(io.StringIO(input_data),
-				 				 parse_dates = [self.dict_aux['Datetime column name']],
-								 date_parser = lambda x : dt.datetime.strptime(x,
-								 											   self.dict_aux['Datetime column format']),
-								 index_col   = [self.dict_aux['Datetime column name']],
-								)
-				# '''
 				rv = pd.read_csv(io.StringIO(input_data))
 				rv[self.dict_aux['Datetime column name']] = pd.to_datetime(rv[self.dict_aux['Datetime column name']],
 							                                               format = self.dict_aux['Datetime column format'])
