@@ -184,6 +184,8 @@ async function get_data_fews(code, name, lat, lon, depto, mun, cenpoblado, nomZH
     // Add the dynamic loader
     $("#streamflow").html(loader);
     $("#water-level").html(loader);
+    $("#streamflow-forecast").html(loader);
+    $("#water-level-forecast").html(loader);
 
     // We need stop 300ms to obtain the width of the panel-tab-content-fews
     await sleep(300);
@@ -322,7 +324,7 @@ window.onload = function () {
 
     // Load drainage network
     var url = 'https://geoserver.hydroshare.org/geoserver/HS-dd069299816c4f1b82cd1fb2d59ec0ab/ows';
-    var URL = url + L.Util.getParamString(L.Util.extend({service      : 'WFS',
+    var URL = url + L.Util.getParamString(L.Util.extend({service     : 'WFS',
                                                         version      : '1.0.0',
                                                         request      : 'GetFeature',
                                                         typeName     : 'HS-dd069299816c4f1b82cd1fb2d59ec0ab:colombia_geoglows_drainage_v1',
@@ -330,6 +332,47 @@ window.onload = function () {
                                                         outputFormat : 'application/json'
                                                         }));
     
+    fetch(URL, {
+        method: 'GET',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(response=>response.json())
+    .then(resp => {
+        var drainage = new L.geoJson(resp,
+            {onEachFeature : function(feature, layer){
+                layer.on({
+                    // On click function
+                    click : function(e){
+                        showPanelRiver(e);
+                        },
+                    mouseover: function(e) {
+                        e.target.setStyle({
+                                weight: 3, // Cambia el grosor del trazo
+                                color: "#FF0000" // Cambia el color
+                            });
+                        },
+                    mouseout: function(e) {
+                        e.target.setStyle({
+                                weight: 1, // Cambia el grosor del trazo
+                                color: "#4747C9", // Cambia el color
+                                opacity: 0.5
+                            });
+                        },
+                });
+                },
+            style : {
+                weight: 1, 
+                color: "#4747C9",
+                opacity: 0.5
+                }
+            }).addTo(map);
+        
+        // Fit the map to the river bounds
+        map.fitBounds(drainage.getBounds());
+    }).catch(error => console.error('Error fetching data:', error));
+
+
+    /*
     // Call server
     $.ajax({
         url : URL,
@@ -368,7 +411,7 @@ window.onload = function () {
             map.fitBounds(drainage.getBounds());
         }
     });
-
+    */
 
     // Load FEWS stations
     fetch("get-fews-alerts")

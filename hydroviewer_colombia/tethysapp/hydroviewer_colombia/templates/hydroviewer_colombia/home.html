@@ -186,6 +186,11 @@
               </div>
             </div>
         </div>
+        
+        <div style="display: flex; flex-direction: row-reverse; margin: 5px">
+          <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="modal" aria-label="Close">Cerrar</button>
+        </div>
+
       </div>
     </div>
   </div>
@@ -255,6 +260,30 @@
                   aria-controls="water-level" 
                   aria-selected="false"> Nivel en tiempo real </button>
               </li>
+
+              <li class="nav-item" role="presentation">
+                  <button 
+                      class="nav-link" 
+                      id="streamflow-forecast-tab" 
+                      data-bs-toggle="tab" 
+                      data-bs-target="#streamflow-forecast" 
+                      type="button" 
+                      role="tab" 
+                      aria-controls="streamflow-forecast" 
+                      aria-selected="false"> Caudal pronóstico </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                  <button 
+                      class="nav-link" 
+                      id="water-level-forecast-tab" 
+                      data-bs-toggle="tab" 
+                      data-bs-target="#water-level-forecast" 
+                      type="button" 
+                      role="tab" 
+                      aria-controls="water-level-forecast" 
+                      aria-selected="false"> Nivel pronóstico </button>
+              </li>
+
             </ul>
 
             <div class="tab-content" id="panel-tab-content-fews">
@@ -277,7 +306,31 @@
                 </div>
               </div>
 
+              <div class="tab-pane fade" id="streamflow-forecast" role="tabpanel" aria-labelledby="streamflow-forecast-tab">
+                <div class="loading-container" style="height: 350px; padding-top: 12px;">
+                  <br> 
+                  <div class="loading"> 
+                    <h2>LOADING DATA</h2>
+                      <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
+                  </div>
+                </div>
+              </div>
+
+              <div class="tab-pane fade" id="water-level-forecast" role="tabpanel" aria-labelledby="water-level-forecast-tab">
+                <div class="loading-container" style="height: 350px; padding-top: 12px;">
+                  <br> 
+                  <div class="loading"> 
+                    <h2>LOADING DATA</h2>
+                      <span></span><span></span><span></span><span></span><span></span><span></span><span></span> 
+                  </div>
+                </div>
+              </div>
+
             </div>
+        </div>
+
+        <div style="display: flex; flex-direction: row-reverse; margin: 5px">
+          <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="modal" aria-label="Close">Cerrar</button>
         </div>
 
       </div>
@@ -290,30 +343,37 @@
 
 {% block content_dependent_styles %}
   {{ block.super }}
-  <link href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" rel="stylesheet"/>
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
   <link href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.15.2/css/selectize.default.min.css" rel="stylesheet"/>
   <link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.9/dist/flatpickr.min.css" rel="stylesheet" >
+
   <link href="{% static 'hydroviewer_colombia/css/main.css' %}" rel="stylesheet"/>
   <link href="{% static 'hydroviewer_colombia/css/map.css' %}" rel="stylesheet"/>
   <link href="{% static 'hydroviewer_colombia/css/loader.css' %}" rel="stylesheet"/>
   <link href="{% static 'hydroviewer_colombia/css/panel.css' %}" rel="stylesheet"/>
   <link href="{% static 'hydroviewer_colombia/css/map_control.css' %}" rel="stylesheet"/>
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
 {% endblock %}
 
 {% block scripts %}
   {{ block.super }}
-  <script src="{% static 'hydroviewer_colombia/libs/Leaflet/leaflet.js' %}" type="text/javascript"></script>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.15.2/js/selectize.min.js" type="text/javascript"></script>
   <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
   <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.9/dist/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.9/dist/l10n/es.min.js"></script>
-  <script src="{% static 'hydroviewer_colombia/libs/Leaflet.GeometryUtil/src/leaflet.geometryutil.js' %}"></script>
-  <script src="{% static 'hydroviewer_colombia/libs/Leaflet.AlmostOver/src/leaflet.almostover.js' %}"></script>
+
   <script src="{% static 'hydroviewer_colombia/js/utils.js' %}" type="text/javascript"></script>
   <script src="{% static 'hydroviewer_colombia/js/map.js' %}" type="text/javascript"></script>
   <script src="{% static 'hydroviewer_colombia/js/map_control.js' %}" type="text/javascript"></script>
   <script src="{% static 'hydroviewer_colombia/js/main.js' %}" type="text/javascript"></script>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
 {% endblock %}

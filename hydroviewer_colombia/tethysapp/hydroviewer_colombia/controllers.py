@@ -70,6 +70,7 @@ def get_format_data(sql_statement, conn):
     # Return result
     return(data)
 
+
 def gumbel_1(std: float, xbar: float, rp: int or float) -> float:
     return -math.log(-math.log(1 - (1 / rp))) * std * .7797 + xbar - (.45 * std)
 
@@ -119,7 +120,6 @@ def get_ensemble_stats(ensemble):
         high_res_df
     ], axis=1)
     return(stats_df)
-
 
 
 def get_forecast_date(comid, date):
@@ -214,6 +214,152 @@ def get_fews_data(station_code, folder, file_subfix):
 
     return observedDischarge_df, sensorDischarge_df
 
+
+def __bias_correction_forecast__(sim_hist, fore_nofix, obs_hist):
+    '''Correct Bias Forecasts'''
+
+    # Selection of monthly simulated data
+    monthly_simulated = sim_hist[sim_hist.index.month == (fore_nofix.index[0]).month].dropna()
+
+    # Obtain Min and max value
+    min_simulated = monthly_simulated.min().values[0]
+    max_simulated = monthly_simulated.max().values[0]
+
+    min_factor_df   = fore_nofix.copy()
+    max_factor_df   = fore_nofix.copy()
+    forecast_ens_df = fore_nofix.copy()
+
+    for column in fore_nofix.columns:
+        # Min Factor
+        tmp_array = np.ones(fore_nofix[column].shape[0])
+        tmp_array[fore_nofix[column] < min_simulated] = 0
+        min_factor = np.where(tmp_array == 0, fore_nofix[column] / min_simulated, tmp_array)
+
+        # Max factor
+        tmp_array = np.ones(fore_nofix[column].shape[0])
+        tmp_array[fore_nofix[column] > max_simulated] = 0
+        max_factor = np.where(tmp_array == 0, fore_nofix[column] / max_simulated, tmp_array)
+
+        # Replace
+        tmp_fore_nofix = fore_nofix[column].copy()
+        tmp_fore_nofix.mask(tmp_fore_nofix <= min_simulated, min_simulated, inplace=True)
+        tmp_fore_nofix.mask(tmp_fore_nofix >= max_simulated, max_simulated, inplace=True)
+
+        # Save data
+        forecast_ens_df.update(pd.DataFrame(tmp_fore_nofix, index=fore_nofix.index, columns=[column]))
+        min_factor_df.update(pd.DataFrame(min_factor, index=fore_nofix.index, columns=[column]))
+        max_factor_df.update(pd.DataFrame(max_factor, index=fore_nofix.index, columns=[column]))
+
+    # Get  Bias Correction
+    corrected_ensembles = geoglows.bias.correct_forecast(forecast_ens_df, sim_hist, obs_hist)
+    corrected_ensembles = corrected_ensembles.multiply(min_factor_df, axis=0)
+    corrected_ensembles = corrected_ensembles.multiply(max_factor_df, axis=0)
+
+    return corrected_ensembles
+
+
+def get_corrected_forecast_records(records_df, simulated_df, observed_df):
+    ''' Este es el comentario de la doc '''
+    date_ini = records_df.index[0]
+    month_ini = date_ini.month
+    date_end = records_df.index[-1]
+    month_end = date_end.month
+    meses = np.arange(month_ini, month_end + 1, 1)
+    fixed_records = pd.DataFrame()
+    for mes in meses:
+        values = records_df.loc[records_df.index.month == mes]
+        monthly_simulated = simulated_df[simulated_df.index.month == mes].dropna()
+        monthly_observed = observed_df[observed_df.index.month == mes].dropna()
+        min_simulated = np.min(monthly_simulated.iloc[:, 0].to_list())
+        max_simulated = np.max(monthly_simulated.iloc[:, 0].to_list())
+        min_factor_records_df = values.copy()
+        max_factor_records_df = values.copy()
+        fixed_records_df = values.copy()
+        column_records = values.columns[0]
+        tmp = records_df[column_records].dropna().to_frame()
+        min_factor = tmp.copy()
+        max_factor = tmp.copy()
+        min_factor.loc[min_factor[column_records] >= min_simulated, column_records] = 1
+        min_index_value = min_factor[min_factor[column_records] != 1].index.tolist()
+        for element in min_index_value:
+            min_factor[column_records].loc[min_factor.index == element] = tmp[column_records].loc[tmp.index == element] / min_simulated
+        max_factor.loc[max_factor[column_records] <= max_simulated, column_records] = 1
+        max_index_value = max_factor[max_factor[column_records] != 1].index.tolist()
+        for element in max_index_value:
+            max_factor[column_records].loc[max_factor.index == element] = tmp[column_records].loc[tmp.index == element] / max_simulated
+        tmp.loc[tmp[column_records] <= min_simulated, column_records] = min_simulated
+        tmp.loc[tmp[column_records] >= max_simulated, column_records] = max_simulated
+        fixed_records_df.update(pd.DataFrame(tmp[column_records].values, index=tmp.index, columns=[column_records]))
+        min_factor_records_df.update(pd.DataFrame(min_factor[column_records].values, index=min_factor.index, columns=[column_records]))
+        max_factor_records_df.update(pd.DataFrame(max_factor[column_records].values, index=max_factor.index, columns=[column_records]))
+        corrected_values = geoglows.bias.correct_forecast(fixed_records_df, simulated_df, observed_df)
+        corrected_values = corrected_values.multiply(min_factor_records_df, axis=0)
+        corrected_values = corrected_values.multiply(max_factor_records_df, axis=0)
+    
+        fixed_records = fixed_records.append(corrected_values)
+
+    fixed_records.sort_index(inplace=True)
+    return(fixed_records)
+
+
+def get_observed_data(table_name, station_code, conn):
+    try:
+        rv = pd.read_sql('select datetime, s_{0} from {1}'.format(station_code, table_name), conn)
+        rv.set_index('datetime', inplace=True)
+        return rv
+    except:
+        return None
+
+
+def get_simulated_data(code, hs_df, table_stations, col, conn):
+    if not hs_df is None:
+        station_comid = pd.read_sql("select comid from {0} where {1} like '{2}'".format(table_stations,
+                                                                                        col,
+                                                                                        code),
+                                                                                        conn).values.flatten()[0]
+        # Load simulated data
+        simh_ts     = pd.read_sql("select * from hs_{0}".format(station_comid), conn)
+        ensemble_ts = pd.read_sql("select * from f_{0}".format(station_comid), conn)
+        frecord_ts  = pd.read_sql("select * from fr_{0}".format(station_comid), conn)
+
+        simh_ts['datetime']     = pd.to_datetime(simh_ts['datetime'], format="%Y-%m-%d %H:%M:%S")
+        ensemble_ts['datetime'] = pd.to_datetime(ensemble_ts['datetime'], format="%Y-%m-%d %H:%M:%S")
+        frecord_ts['datetime']  = pd.to_datetime(frecord_ts['datetime'], format="%Y-%m-%d %H:%M:%S")
+
+        simh_ts.set_index('datetime', inplace=True)
+        ensemble_ts.set_index('datetime', inplace=True)
+        frecord_ts.set_index('datetime', inplace=True)
+
+        # TODO : remove whwere geoglows server works
+        simh_ts = simh_ts[simh_ts.index < '2022-06-01'].copy()
+
+        # Fix data
+        fix_ensemble_forecast = __bias_correction_forecast__(simh_ts,
+                                                                ensemble_ts,
+                                                                hs_df)
+        fix_forecast_records  = get_corrected_forecast_records(frecord_ts,
+                                                                simh_ts,
+                                                                hs_df)
+        fix_forecast_records = fix_forecast_records[fix_forecast_records.index > fix_forecast_records.index[-1] - dt.timedelta(days=7)].copy()
+
+        hres_ts = fix_ensemble_forecast['ensemble_52_m^3/s'].copy()
+        fix_ensemble_forecast.drop('ensemble_52_m^3/s', axis=1, inplace=True)
+
+        max_ts = fix_ensemble_forecast.max(axis=1)
+        mim_ts = fix_ensemble_forecast.min(axis=1)
+        p25_ts = fix_ensemble_forecast.quantile(0.25, axis=1)
+        p50_ts = fix_ensemble_forecast.quantile(0.5, axis=1)
+        p75_ts = fix_ensemble_forecast.quantile(0.75, axis=1)
+
+        return mim_ts, p25_ts, p50_ts, p75_ts, max_ts, hres_ts, fix_forecast_records
+
+    else:
+        empty_df = pd.DataFrame({'datetime' : [pd.NaT, pd.NaT],
+                                 's'        : [np.nan, np.nan]})
+        empty_df.set_index('datetime', inplace=True, drop=True)
+        return empty_df.squeeze(), empty_df.squeeze(), empty_df.squeeze(), empty_df.squeeze(), empty_df.squeeze(), empty_df.squeeze(), empty_df
+
+
 ####################################################################################################
 ##                                      PLOTTING FUNCTIONS                                        ##
 ####################################################################################################
@@ -269,7 +415,6 @@ def get_acumulated_volume_plot(sim, comid):
     # Integrating the plots
     chart_obj = go.Figure(data=[simulated_volume], layout=layout)
     return(chart_obj)
-
 
 
 # Forecast plot
@@ -354,18 +499,28 @@ def plot_fews_time_series(data, title, axis_names, hlines : dict = None):
 
     # Add tracers
     x_list = []
-    for data_i, color_i, name_i in list(zip(data['data'], data['color'], data['name'])):
+    # TODO Change as **kwards
+    for data_i, color_i, name_i, dash_i, legend_group_i, showlegend_i, fill_i in list(zip(data['data'],
+                                                                    data['color'],
+                                                                    data['name'],
+                                                                    data['dash_style'],
+                                                                    data['legend_group'],
+                                                                    data['showlegend'],
+                                                                    data['fill'])):
         fews_plot.add_trace(go.Scatter(x = data_i.index,
                                        y = data_i[data_i.columns].values.flatten(),
-                                       mode = 'lines+markers',
-                                       marker_color=color_i,
+                                       mode = 'lines',
                                        name = name_i,
-                                       connectgaps=False,
-                                       legendgroup='G1',
-                                       legendgrouptitle_text="Método de obtención",
+                                       connectgaps = True,
+                                       legendgroup = legend_group_i,
+                                       showlegend=showlegend_i,
                                        hovertemplate = 'Valor : %{y:.2f}<br>' + 
                                                        'Fecha : %{x|%Y/%m/%d}<br>' + 
-                                                       'Hora : %{x|%H:%M}'))
+                                                       'Hora : %{x|%H:%M}',
+                                       line = dict(color = color_i,
+                                                   dash = dash_i),
+                                       fill = fill_i,
+                                       ))
         x_list += data_i.index.tolist()
 
     if 0 >= len(x_list):
@@ -386,10 +541,10 @@ def plot_fews_time_series(data, title, axis_names, hlines : dict = None):
             fews_plot.add_trace(go.Scatter(x = [x_ini, x_end],
                                            y = [data_i, data_i],
                                            mode = 'lines',
-                                           marker_color=color_i,
+                                           marker_color = color_i,
                                            name = name_line,
                                            connectgaps=False,
-                                           legendgroup='G2',
+                                           legendgroup='Group',
                                            legendgrouptitle_text="Umbrales"))
     
     fews_plot.update_layout(title=title,
@@ -398,6 +553,7 @@ def plot_fews_time_series(data, title, axis_names, hlines : dict = None):
                             legend_title="Leyenda")
    
     return fews_plot
+
 
 def _plot_colors():
         return {
@@ -409,6 +565,7 @@ def _plot_colors():
             '50 Year': 'rgba(128, 0, 106, .4)',
             '100 Year': 'rgba(128, 0, 246, .4)',
         }
+
 
 def _rperiod_scatters(startdate: str, enddate: str, rperiods: pd.DataFrame, y_max: float, max_visible: float = 0,
                       visible: bool = None):
@@ -661,28 +818,186 @@ def get_data_fews(request):
     obs_st, sen_st = get_fews_data(code, 'jsonQ', 'Qobs')
     obs_wl, sen_wl = get_fews_data(code, 'jsonH', 'Hobs')
 
+    db= create_engine(tokencon)
+    conn = db.connect()
+    try:
+        try:
+            # Observed historical time series streamdlow
+            obsh_streamflow = get_observed_data(table_name = 'observed_streamflow_data',
+                                                station_code = code,
+                                                conn = conn)
+
+            mim_sf, p25_sf, p50_sf, p75_sf, max_sf, hres_sf, records_streamflow = get_simulated_data(code = code,
+                                                                        hs_df = obsh_streamflow, 
+                                                                        table_stations = 'stations_streamflow', 
+                                                                        col = 'codigo', 
+                                                                        conn = conn)
+        except:
+            mim_sf = pd.Series()
+            p25_sf = pd.Series()
+            p50_sf = pd.Series()
+            p75_sf = pd.Series()
+            max_sf = pd.Series()
+            hres_sf = pd.Series()
+            records_streamflow = pd.DataFrame()
+
+        
+        try:
+            obsh_waterlevel = get_observed_data(table_name = 'observed_waterlevel_data', 
+                                                station_code = code,
+                                                conn = conn)
+
+            mim_wl, p25_wl, p50_wl, p75_wl, max_wl, hres_wl, records_waterlevel = get_simulated_data(code = code,
+                                                                        hs_df = obsh_waterlevel, 
+                                                                        table_stations = 'stations_waterlevel', 
+                                                                        col = 'codigo', 
+                                                                        conn = conn)
+        except:
+            mim_wl = pd.Series()
+            p25_wl = pd.Series()
+            p50_wl = pd.Series()
+            p75_wl = pd.Series()
+            max_wl = pd.Series()
+            hres_wl = pd.Series()
+            records_waterlevel = pd.DataFrame()
+
+
+    finally:
+        conn.close()
+
     # Plot results
     streamflow_plot  = plot_fews_time_series(data  = {'data'  : [obs_st, sen_st],
                                                       'color' : ['green', 'blue'],
-                                                      'name'  : ['Observado' , 'Sensor']},
+                                                      'name'  : ['Observado' , 'Sensor'],
+                                                      'dash_style' : [None, None],
+                                                      'legend_group' : ['G1', 'G1'],
+                                                      'showlegend' : [True, True],
+                                                      'fill' : [None, None]
+                                                      },
                                              title = 'Caudal observado en tiempo real. <br>[Estación : {}]'.format(code),
                                              axis_names = ['Caudal m3/s', 'fecha'],
                                              )
-    
+
     waterlevel_plot = plot_fews_time_series(data  = {'data'  : [obs_wl, sen_wl],
                                                      'color' : ['green', 'blue'],
-                                                     'name'  : ['Observado' , 'Sensor']},
+                                                     'name'  : ['Observado' , 'Sensor'],
+                                                     'dash_style' : [None, None],
+                                                     'legend_group' : ['G1', 'G1'],
+                                                     'showlegend' : [True, True],
+                                                     'fill' : [None, None]
+                                                     },
                                             hlines = {'data'  : [umaxhis, ubajos, uamarilla, unaranja, uroja],
-                                                      'color' : ['black', 'purple', 'yellow', 'orange', 'red'],
+                                                      'color' : ['black', 'magenta', 'yellow', 'orange', 'red'],
                                                       'name'  : ['Máximos', 'Bajos', 'Amarilla', 'Naranja', 'Roja'],
                                                       'units' : 'm'},
                                             title = 'Nivel observado en tiempo real. <br>[Estación : {}]'.format(code),
                                             axis_names = ['Nivel m', 'fecha']
                                             )
 
+    # Plot forecast
+    streamflow_forecast_plot  = plot_fews_time_series(data  = {'data'  : [obs_st[obs_st.index > dt.datetime.now() - dt.timedelta(days=7)],
+                                                                          sen_st[sen_st.index > dt.datetime.now() - dt.timedelta(days=7)],
+                                                                          records_streamflow,
+
+                                                                          p75_sf.append(p25_sf[::-1]).to_frame(),
+                                                                          max_sf.append(mim_sf[::-1]).to_frame(),
+
+                                                                          mim_sf.to_frame(),
+                                                                          p25_sf.to_frame(),
+                                                                          p50_sf.to_frame(),
+                                                                          p75_sf.to_frame(), 
+                                                                          max_sf.to_frame(),
+
+                                                                          hres_sf.to_frame()],
+                                                                'color' : ['green', 'blue', '#7a4419',
+                                                                           "#385f71", "#d7b377",
+                                                                           "#d7b377", "#385f71", "#64113f", "#385f71", "#d7b377",
+                                                                           "black"],
+                                                                'name'  : ['Observado' , 'Sensor', 'Pronóstico 1er día',
+                                                                           'Percentil 25 - 75 de caudal', 'Caudal máximo y mínimo',
+                                                                           'Mínimo', 'Percentil 25', 'Pronóstico Promedio', 'Percentil 75', 'Máximo',
+                                                                           'Pronostico alta resolución'],
+                                                                'dash_style' : [None, None, None,
+                                                                                None, None,
+                                                                               'dash', None, 'dashdot', None, 'dash',
+                                                                               'dashdot'],
+                                                                'legend_group' : ['G1', 'G1', 'G4',
+                                                                                  'G3', 'G2',
+                                                                                  'G2', 'G3', 'G4', 'G3', 'G2',
+                                                                                  'G4'],
+                                                                'showlegend' : [True, True, True,
+                                                                                True, True,
+                                                                                False, False, False, False, False,
+                                                                                True],
+                                                                'fill' : [None, None, None,
+                                                                          'toself', 'toself',
+                                                                          None, None, None, None, None,
+                                                                          None],
+                                                                },
+                                             title = 'Caudal pronóstico. <br>[Estación : {}]'.format(code),
+                                             axis_names = ['Caudal m3/s', 'fecha'],
+                                             )
+    streamflow_forecast_plot.add_vline(x=dt.datetime.now(), 
+                                       line_width=2, 
+                                       line_dash="dash", 
+                                       line_color="red")
+
+    waterlevel_forecast_plot = plot_fews_time_series(data  = {'data'  : [obs_wl[obs_wl.index > dt.datetime.now() - dt.timedelta(days=7)],
+                                                                         sen_wl[sen_wl.index > dt.datetime.now() - dt.timedelta(days=7)],
+                                                                         records_waterlevel / 100,
+
+                                                                         p75_wl.append(p25_wl[::-1]).to_frame() / 100,
+                                                                         max_wl.append(mim_wl[::-1]).to_frame() / 100,
+
+                                                                         mim_wl.to_frame() / 100,
+                                                                         p25_wl.to_frame() / 100,
+                                                                         p50_wl.to_frame() / 100,
+                                                                         p75_wl.to_frame() / 100,
+                                                                         max_wl.to_frame() / 100,
+
+                                                                         hres_wl.to_frame() / 100],
+                                                     'color' : ['green', 'blue', '#7a4419',
+                                                                "#385f71", "#d7b377",
+                                                                "#d7b377", "#385f71", "#64113f", "#385f71", "#d7b377",
+                                                                "black"],
+                                                     'name'  : ['Observado' , 'Sensor', 'Pronóstico 1er día',
+                                                                'Percentil 25 - 75 de nivel', 'Nivel máximo y mínimo',
+                                                                'Mínimo', 'Percentil 25', 'Promedio', 'Percentil 75', 'Máximo',
+                                                                'Pronostico alta resolución'],
+                                                     'dash_style' : [None, None, None,
+                                                                     None, None,
+                                                                    'dash', 'dash', 'dashdot', 'dash', 'dash',
+                                                                    'dashdot'],
+                                                     'legend_group' : ['G1', 'G1', 'G4',
+                                                                       'G3', 'G2',
+                                                                       'G2', 'G3', 'G4', 'G3', 'G2',
+                                                                       'G4'],
+                                                     'showlegend' : [True, True, True,
+                                                                     True, True,
+                                                                     False, False, False, False, False,
+                                                                     True],
+                                                     'fill' : [None, None, None,
+                                                               'toself', 'toself',
+                                                               None, None, None, None, None,
+                                                               None],
+                                                     },
+                                            hlines = {'data'  : [umaxhis, ubajos, uamarilla, unaranja, uroja],
+                                                      'color' : ['black', 'magenta', 'yellow', 'orange', 'red'],
+                                                      'name'  : ['Máximos', 'Bajos', 'Amarilla', 'Naranja', 'Roja'],
+                                                      'units' : 'm'},
+                                            title = 'Nivel de agua pronóstico. <br>[Estación : {}]'.format(code),
+                                            axis_names = ['Nivel m', 'fecha']
+                                            )
+    waterlevel_forecast_plot.add_vline(x=dt.datetime.now(), 
+                                       line_width=2, 
+                                       line_dash="dash", 
+                                       line_color="red")
+
     context = {
        "streamflow_plot": PlotlyView(streamflow_plot.update_layout(width = plot_width)),
-       "waterlevel_plot": PlotlyView(waterlevel_plot.update_layout(width = plot_width))
+       "waterlevel_plot": PlotlyView(waterlevel_plot.update_layout(width = plot_width)),
+       "streamflow_forecast_plot": PlotlyView(streamflow_forecast_plot.update_layout(width = plot_width)),
+       "waterlevel_forecast_plot": PlotlyView(waterlevel_forecast_plot.update_layout(width = plot_width))
     }
 
     return render(request, 'hydroviewer_colombia/panel_fews.html', context) 
@@ -716,13 +1031,6 @@ def get_data(request):
     conn.close()
 
     # Plots and tables
-    """
-    data_plot = geoglows.plots.historic_simulation(
-                                    hist = simulated_data,
-                                    rperiods = return_periods,
-                                    outformat = "plotly",
-                                    titles = {'Reach COMID': station_comid})
-    """
     data_plot = historic_simulation(
                                     hist = simulated_data,
                                     rperiods = return_periods,
@@ -990,6 +1298,7 @@ def get_fews_streamflow_data_xlsx(request):
     rv.rename(columns={col : col.replace('data', '') for col in rv.columns}, inplace=True)
     rv.sort_values(by=['date'], inplace=True)
     rv.reset_index(drop=True, inplace=True)
+    rv.set_index('date', inplace=True)
 
     # Crear el archivo Excel
     output = io.BytesIO()
@@ -1022,6 +1331,7 @@ def get_fews_water_level_data_xlsx(request):
     rv.rename(columns={col : col.replace('data', '') for col in rv.columns}, inplace=True)
     rv.sort_values(by=['date'], inplace=True)
     rv.reset_index(drop=True, inplace=True)
+    rv.set_index('date', inplace=True)
 
     # Crear el archivo Excel
     output = io.BytesIO()
@@ -1033,6 +1343,128 @@ def get_fews_water_level_data_xlsx(request):
     # Configurar la respuesta HTTP para descargar el archivo
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename=nivel_tiempo_real_{}.xlsx'.format(station_code)
+    response.write(output.getvalue())
+    return response
+
+
+@controller(name = 'get_fews_sf_forecast_data_xlsx',
+            url='hydroviewer-colombia/get-fews-stream-flow-forecast-data-xlsx')
+def get_fews_sf_forecast_data_xlsx(request):
+    # Retrieving GET arguments
+    station_code = request.GET['code']
+
+    # Establish connection to database
+    db= create_engine(tokencon)
+    conn = db.connect()
+
+    try:
+        # Observed historical time series streamdlow
+        obsh_streamflow = get_observed_data(table_name = 'observed_streamflow_data',
+                                            station_code = station_code,
+                                            conn = conn)
+
+        mim_sf, p25_sf, p50_sf, p75_sf, max_sf, hres_sf, records_streamflow = get_simulated_data(code = station_code,
+                                                                        hs_df = obsh_streamflow, 
+                                                                        table_stations = 'stations_streamflow', 
+                                                                        col = 'codigo', 
+                                                                        conn = conn)
+    except:
+        mim_sf = pd.DataFrame()
+        p25_sf = pd.DataFrame()
+        p50_sf = pd.DataFrame()
+        p75_sf = pd.DataFrame()
+        max_sf = pd.DataFrame()
+        hres_sf = pd.DataFrame()
+        records_streamflow = pd.DataFrame()
+    finally:
+        conn.close()
+
+    # Build result dataframe
+    forecast_df = pd.DataFrame(data = {'Mínimo' : mim_sf,
+                                    'Percentil 25' : p25_sf,
+                                    'Media' : p50_sf,
+                                    'Percentil 75' : p75_sf,
+                                    'Máximo' : max_sf})
+    forecast_df.dropna(inplace=True)
+    hr_df = hres_sf.to_frame()
+    hr_df.dropna(inplace=True)
+    record = records_streamflow
+
+    # Crear el archivo Excel
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+
+    forecast_df.to_excel(writer, sheet_name='Pronóstico', index=True)  # Aquí se incluye el índice
+    hr_df.to_excel(writer, sheet_name='Alta resolución', index=True)  # Aquí se incluye el índice
+    record.to_excel(writer, sheet_name='Registro 1er dìa', index=True)  # Aquí se incluye el índice
+
+    writer.save()
+    output.seek(0)
+
+    # Configurar la respuesta HTTP para descargar el archivo
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=caudal_pronostico_{}.xlsx'.format(station_code)
+    response.write(output.getvalue())
+    return response
+
+
+@controller(name = 'get_fews_wl_forecast_data_xlsx',
+            url='hydroviewer-colombia/get-fews-water-level-forecast-data-xlsx')
+def get_fews_sf_forecast_data_xlsx(request):
+    # Retrieving GET arguments
+    station_code = request.GET['code']
+
+    # Establish connection to database
+    db= create_engine(tokencon)
+    conn = db.connect()
+
+    try:
+        # Observed historical time series streamdlow
+        obsh_waterlevel = get_observed_data(table_name = 'observed_waterlevel_data',
+                                            station_code = station_code,
+                                            conn = conn)
+
+        mim_wl, p25_wl, p50_wl, p75_wl, max_wl, hres_wl, records_wl = get_simulated_data(code = station_code,
+                                                                        hs_df = obsh_waterlevel, 
+                                                                        table_stations = 'stations_waterlevel', 
+                                                                        col = 'codigo', 
+                                                                        conn = conn)
+    except:
+        mim_wl = pd.Series()
+        p25_wl = pd.Series()
+        p50_wl = pd.Series()
+        p75_wl = pd.Series()
+        max_wl = pd.Series()
+        hres_wl = pd.Series()
+        records_wl = pd.DataFrame()
+    finally:
+        conn.close()
+
+    # Build result dataframe
+    forecast_df = pd.DataFrame(data = {'Mínimo m' : mim_wl / 100,
+                                    'Percentil 25 m' : p25_wl / 100,
+                                    'Media m' : p50_wl / 100,
+                                    'Percentil 75 m' : p75_wl / 100,
+                                    'Máximo m' : max_wl / 100})
+    forecast_df.dropna(inplace=True)
+    hr_df = (hres_wl * 1 / 100).to_frame()
+    hr_df.dropna(inplace=True)
+    record = records_wl * 1 / 100
+
+    # Crear el archivo Excel
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+
+    forecast_df.to_excel(writer, sheet_name='Pronóstico', index=True)  # Aquí se incluye el índice
+    hr_df.to_excel(writer, sheet_name='Alta resolución', index=True)  # Aquí se incluye el índice
+    record.to_excel(writer, sheet_name='Registro 1er dìa', index=True)  # Aquí se incluye el índice
+
+    writer.save()
+    output.seek(0)
+
+    # Configurar la respuesta HTTP para descargar el archivo
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=nivel_pronostico_{}.xlsx'.format(station_code)
     response.write(output.getvalue())
     return response
 
@@ -1102,8 +1534,7 @@ def down_load_img(request):
                                 titles = {'COMID': station_comid})
         name_file = 'historical'
     elif 'forecast' == type_graph:
-        fig = get_forecast_plot(
-                                comid = station_comid, 
+        fig = get_forecast_plot(comid = station_comid, 
                                 stats = ensemble_stats, 
                                 rperiods = return_periods, 
                                 records = forecast_records)

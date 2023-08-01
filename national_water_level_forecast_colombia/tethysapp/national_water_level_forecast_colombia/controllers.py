@@ -572,7 +572,7 @@ def forecast_stats(stats: pd.DataFrame, rperiods: pd.DataFrame = None, titles: d
     layout = go.Layout(
         title=_build_title('Nivel pronosticado', titles),
         yaxis={'title': 'Nivel (cm)', 'range': [0, 'auto']},
-        xaxis={'title': 'Fecha (UTC +0:00)', 'range': [startdate, enddate], 'hoverformat': '%b %d %Y',
+        xaxis={'title': 'Fecha (UTC +0:00)', 'range': [startdate, enddate], 'hoverformat': '%H:%M - %b %d %Y',
                'tickformat': '%b %d %Y'},
     )
     figure = go.Figure(scatter_plots, layout=layout)
@@ -1090,6 +1090,12 @@ def get_corrected_forecast_xlsx(request):
     
     # Forecast record correctes
     corrected_forecast_records = get_corrected_forecast_records(forecast_records, simulated_data, observed_data)    
+
+    # Fix column names
+    fix_label = lambda x : x.replace('flow', 'waterlevel').replace('m^3/s', 'cm')
+    corrected_ensemble_stats.rename(columns={col : fix_label(col) for col in corrected_ensemble_stats.columns}, inplace=True)
+    corrected_ensemble_forecast.rename(columns={col : fix_label(col) for col in corrected_ensemble_forecast.columns}, inplace=True)
+    corrected_forecast_records.rename(columns={col : fix_label(col) for col in corrected_forecast_records.columns}, inplace=True)
 
     # Crear el archivo Excel
     output = io.BytesIO()

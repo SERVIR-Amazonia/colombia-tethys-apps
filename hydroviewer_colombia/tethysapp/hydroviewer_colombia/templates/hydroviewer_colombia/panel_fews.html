@@ -30,6 +30,28 @@
                 aria-controls="water-level" 
                 aria-selected="false"> Nivel en tiempo real </button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button 
+                class="nav-link" 
+                id="streamflow-forecast-tab" 
+                data-bs-toggle="tab" 
+                data-bs-target="#streamflow-forecast" 
+                type="button" 
+                role="tab" 
+                aria-controls="streamflow-forecast" 
+                aria-selected="false"> Caudal pronóstico </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button 
+                class="nav-link" 
+                id="water-level-forecast-tab" 
+                data-bs-toggle="tab" 
+                data-bs-target="#water-level-forecast" 
+                type="button" 
+                role="tab" 
+                aria-controls="water-level-forecast" 
+                aria-selected="false"> Nivel pronóstico </button>
+        </li>
     </ul>
 
     <div class="tab-content" id="panel-tab-content-fews">
@@ -52,6 +74,30 @@
                         <i class="fa-solid fa-download"></i> Descargar serie de niveles
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade show" id="streamflow-forecast" role="tabpanel" aria-labelledby="streamflow-forecast-tab">
+            <div class="container-fluid">
+                {% gizmo streamflow_forecast_plot %}
+                <button type="button" class="btn btn-sm btn-primary" onclick="descargarArchivo('get-fews-streamflow-data-xlsx')">
+                    <i class="fa-solid fa-download"></i> Descargar serie de caudal
+                </button>
+                <button type="button" class="btn btn-sm btn-primary" onclick="descargarArchivo('get-fews-stream-flow-forecast-data-xlsx')">
+                    <i class="fa-solid fa-download"></i> Descargar pronóstico de caudales
+                </button>
+            </div>
+        </div>
+
+        <div class="tab-pane fade show" id="water-level-forecast" role="tabpanel" aria-labelledby="water-level-forecast-tab">
+            <div class="container-fluid">
+                {% gizmo waterlevel_forecast_plot %}
+                <button type="button" class="btn btn-sm btn-primary" onclick="descargarArchivo('get-fews-water-level-data-xlsx')">
+                    <i class="fa-solid fa-download"></i> Descargar serie de niveles
+                </button>
+                <button type="button" class="btn btn-sm btn-primary" onclick="descargarArchivo('get-fews-water-level-forecast-data-xlsx')">
+                    <i class="fa-solid fa-download"></i> Descargar pronóstico de niveles
+                </button>
             </div>
         </div>
 
