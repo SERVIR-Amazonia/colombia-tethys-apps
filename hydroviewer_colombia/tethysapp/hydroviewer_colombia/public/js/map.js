@@ -67,6 +67,10 @@ const IconR025 = IconMarker("25");      // RP: 25 years
 const IconR050 = IconMarker("50");      // RP: 50 years
 const IconR100 = IconMarker("100");     // RP: 100 years
 
+const IconL_1 = IconMarker("lower_1");  // Low 7q10 from 1 to 3 days
+const IconL_3 = IconMarker("lower_3");  // Low 7q10 from 3 to 7 days
+const IconL_7 = IconMarker("lower_7");  // Low 7q10 from 7 to plus days
+
 // Icon markers for each return period
 const IconFR0 = IconMarkerF("normal", 10); 
 const IconFB = IconMarkerF("bass", 18);
@@ -99,6 +103,17 @@ function IconParse(feature, latlng) {
         case "R100":
             StationIcon = IconR100;
             break;
+
+        case "lower_1":
+            StationIcon = IconL_1;
+            break;
+        case "lower_3":
+            StationIcon = IconL_3;
+            break;
+        case "lower_7":
+            StationIcon = IconL_7;
+            break;
+
     }
     return L.marker(latlng, { icon: StationIcon });
 }
@@ -254,7 +269,6 @@ async function get_data_station(comid, depto, mun, nomAH, nomZH, nomSZH){
 
 
 
-
 // ------------------------------------------------------------------------------------------------------------ //
 //                                         ADDING THE DRAINAGE NETWORK                                          //
 // ------------------------------------------------------------------------------------------------------------ //
@@ -371,48 +385,6 @@ window.onload = function () {
         map.fitBounds(drainage.getBounds());
     }).catch(error => console.error('Error fetching data:', error));
 
-
-    /*
-    // Call server
-    $.ajax({
-        url : URL,
-        success : function(resp) {
-            // Adding the drainage network to the map
-            var drainage = new L.geoJson(resp,
-            {onEachFeature : function(feature, layer){
-                layer.on({
-                    // On click function
-                    click : function(e){
-                        showPanelRiver(e);
-                        },
-                    mouseover: function(e) {
-                        e.target.setStyle({
-                                weight: 3, // Cambia el grosor del trazo
-                                color: "#FF0000" // Cambia el color
-                            });
-                        },
-                    mouseout: function(e) {
-                        e.target.setStyle({
-                                weight: 1, // Cambia el grosor del trazo
-                                color: "#4747C9", // Cambia el color
-                                opacity: 0.5
-                            });
-                        },
-                });
-                },
-            style : {
-                weight: 1, 
-                color: "#4747C9",
-                opacity: 0.5
-                }
-            }).addTo(map);
-
-            // Fit the map to the river bounds
-            map.fitBounds(drainage.getBounds());
-        }
-    });
-    */
-
     // Load FEWS stations
     fetch("get-fews-alerts")
     .then((response) => (layer = response.json()))
@@ -492,9 +464,26 @@ window.onload = function () {
         est_R100.addTo(map);
         est_R100.on('click', showPanelAlert)
 
+
+        // Filter by low alert
+        est_L_1 = L.geoJSON(layer.features.filter(item => item.properties.alert === "lower_1"), {
+            pointToLayer : IconParse,
+        });
+        est_L_1.addTo(map);
+        est_L_1.on('click', showPanelAlert);
+
+        est_L_3 = L.geoJSON(layer.features.filter(item => item.properties.alert === "lower_3"), {
+            pointToLayer : IconParse,
+        });
+        est_L_3.addTo(map);
+        est_L_3.on('click', showPanelAlert);
+
+        est_L_7 = L.geoJSON(layer.features.filter(item => item.properties.alert === "lower_7"), {
+            pointToLayer : IconParse,
+        });
+        est_L_7.addTo(map);
+        est_L_7.on('click', showPanelAlert);
+
     });
 
-
-    }; 
- 
- 
+}; 

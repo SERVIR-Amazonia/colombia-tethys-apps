@@ -106,7 +106,7 @@ class Update_forecast_db:
 			db   = create_engine(db_text, pool_timeout=120)
 			try:
 				# Download data from comid
-				with concurrent.futures.ThreadPoolExecutor(max_workers = 3) as executor:
+				with concurrent.futures.ThreadPoolExecutor(max_workers = 5) as executor:
 					_ = list(executor.map(lambda c : self.__download_data__(c, url_fun, db, lock), 
 										comids))
 			finally:
@@ -143,7 +143,7 @@ class Update_forecast_db:
 		df = self.__build_dataframe__(df, url_comid, params_comid)
 
 		# Review number of data download
-		if df.shape[1] != 52 or df.shape[0] <= 2 or not 'ensemble_52_m^3/s' in df.columns:
+		while df.shape[1] != 52 or df.shape[0] <= 2 or not 'ensemble_52_m^3/s' in df.columns:
 			df = data_request(url=url_comid, params=params_comid)
 			df = self.__build_dataframe__(df, url, params=params_comid)
 

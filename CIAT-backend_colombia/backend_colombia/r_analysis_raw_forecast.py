@@ -7,6 +7,7 @@ import datetime
 import warnings
 import numpy as np
 import pandas as pd
+from scipy import stats
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 warnings.filterwarnings('ignore')
@@ -87,6 +88,101 @@ def get_return_periods(comid, data):
     corrected_rperiods_df.set_index('rivid', inplace=True)
     return corrected_rperiods_df
 
+
+def get_warning_low_level(comid, data):
+
+    def __calc_method__(ts):
+        # Result dictionary
+        rv = {'empirical' : {},
+                'norm'      : {'fun'  : stats.norm,
+                                'para' : {'loc'   : np.nanmean(ts), 
+                                        'scale' : np.nanstd(ts)}},
+                'pearson3'  : {'fun' : stats.pearson3,
+                                'para' : {'loc'   : np.nanmean(ts), 
+                                        'scale' : np.nanstd(ts), 
+                                        'skew'  : 1}},
+                'dweibull'  : {'fun' : stats.dweibull,
+                                'para' : {'loc'   : np.nanmean(ts), 
+                                        'scale' : np.nanstd(ts), 
+                                        'c'     : 1}},
+                'chi2'      : {'fun' : stats.chi2,
+                                'para' : {'loc'   : np.nanmean(ts), 
+                                        'scale' : np.nanstd(ts), 
+                                        'df'    : 2}},
+                'gumbel_r'  : {'fun' : stats.gumbel_r,
+                                'para' : {'loc'   : np.nanmean(ts) - 0.45005 * np.nanstd(ts),
+                                        'scale' : 0.7797 * np.nanstd(ts)}}}
+
+        # Extract empirical distribution data
+        freq, cl = np.histogram(ts, bins='sturges')
+        freq = np.cumsum(freq) / np.sum(freq)
+        cl_marc = (cl[1:] + cl[:-1]) / 2
+
+        # Save values
+        rv['empirical'].update({'freq'    : freq,
+                                'cl_marc' : cl_marc})
+
+        # Function for stadistical test
+        ba_xi2 = lambda o, e : np.square(np.subtract(o,e)).mean() ** (1/2)
+
+        # Add to probability distribution the cdf and the xi test
+        for p_dist in rv:
+            if p_dist == 'empirical':
+                continue
+            
+            # Build cummulative distribution function (CDF)
+            rv[p_dist].update({'cdf' : rv[p_dist]['fun'].cdf(x = cl_marc, 
+                                                                **rv[p_dist]['para'])})
+            
+            # Obtain the xi test result
+            rv[p_dist].update({f'{p_dist}_x2test' : ba_xi2(o = rv[p_dist]['cdf'], 
+                                                            e = freq)})
+        
+        # Select best probability function
+        p_dist_comp = pd.DataFrame(data={'Distribution' : [p_dist for p_dist in rv if p_dist != 'empirical'],
+                                            'xi2_test'     : [rv[p_dist][f'{p_dist}_x2test'] for p_dist in rv if p_dist != 'empirical']})
+        p_dist_comp.sort_values(by='xi2_test', inplace = True)
+        p_dist_comp.reset_index(drop = True, inplace = True)
+        best_p_dist = p_dist_comp['Distribution'].values[0]
+        
+        # NOTES:
+        # 
+        # Q -> Prob
+        # rv[best_p_dist]['fun'](**rv[best_p_dist]['para']).pdf()
+        #
+        # Q -> Prob acum
+        # rv[best_p_dist]['fun'](**rv[best_p_dist]['para']).cdf()
+        #
+        # Prob acum -> Q
+        # rv[best_p_dist]['fun'](**rv[best_p_dist]['para']).ppf([0.15848846])
+
+        return rv[best_p_dist]['fun'](**rv[best_p_dist]['para'])
+
+    low_warnings_number_id = {'7q10' : 1}
+
+    # Previous datatime manager
+    data_cp = data.copy()
+    data_cp = data_cp.rolling(window=7).mean()
+    data_cp = data_cp.groupby(data_cp.index.year).min().values.flatten()
+
+    # Calc comparation value
+    rv = {}
+    for key in low_warnings_number_id:
+        res = __calc_method__(data_cp)
+        # TODO: Fix in case of small rivers get 7q10 negative
+        val = res.ppf([1/10]) if res.ppf([1/10]) > 0 else 0
+        rv.update({key : val})
+
+
+    # Build result dataframe
+    d = {'rivid': [comid]}
+    d.update(rv)
+
+    # Parse to dataframe
+    corrected_low_warnings_df = pd.DataFrame(data=d)
+    corrected_low_warnings_df.set_index('rivid', inplace=True)
+
+    return corrected_low_warnings_df
 
 ###############################################################################################################
 #                                         Getting ensemble statistic                                          #
@@ -191,6 +287,34 @@ def get_excced_rp(stats: pd.DataFrame, ensem: pd.DataFrame, rperiods: pd.DataFra
     return alarm
 
 
+# Excedence warning low
+def get_occurrence_low_warning(ensem: pd.DataFrame, warnings: pd.DataFrame):
+
+    # Build esnsemble comparation time serie
+    ts = ensem.median(axis = 1).copy()
+    ts = ts.groupby(ts.index.year.astype(str) +'/'+ ts.index.month.astype(str) +'/'+ ts.index.day.astype(str)).min()
+
+    # Count warnings alerts
+    rv = {}
+    for warning in warnings.columns:
+        rv[warning] = len(ts[ts < warnings[warning].values[0]])
+
+    # Assing warnings
+    if rv['7q10'] >= 3 and rv['7q10'] < 7 :
+        return 'lower_1'
+    elif rv['7q10'] >= 7 and rv['7q10'] < 10 :
+        return 'lower_3'
+    elif rv['7q10'] >= 10 :
+        return 'lower_7'
+    else:
+        return 'R0'
+
+
+
+#######################################################################
+#                                   MAIN
+#######################################################################
+
 # Setting the connetion to db
 db = create_engine(token)
 try:
@@ -234,6 +358,8 @@ try:
         
         # Return period
         return_periods = get_return_periods(station_comid, simulated_data)
+        warnings_low_level = get_warning_low_level(comid = station_comid,
+							    				   data  = simulated_data)
         
         
         del simulated_data
@@ -243,9 +369,12 @@ try:
         
         # Warning if excced a given return period in 10% of emsemble
         alert_val = get_excced_rp(ensemble_stats, ensemble_forecast, return_periods)
+
+        if alert_val == 'R0':
+            alert_val = get_occurrence_low_warning(ensemble_stats, warnings_low_level)
+
         new_alert.append(alert_val)
         
-        # drainage.loc[i, ['alert']] = alert_val
 
         if alert_val != 'R0':
             print("Progress: {0} %. Comid: {1}. Alert : {2}".format(round(100 * i/n, 3), station_comid, alert_val))

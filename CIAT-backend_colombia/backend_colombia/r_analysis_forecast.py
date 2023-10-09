@@ -4,6 +4,7 @@ import datetime
 import numpy as np
 import pandas as pd
 import geoglows as ggs
+from scipy import stats
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 
@@ -45,7 +46,7 @@ class Update_alarm_level:
 		pgres_tab_coln_update = 'alert'
 
 		# Database
-		pgres_tab_dname_funct = lambda x : 's_'.format(x)
+		# pgres_tab_dname_funct = lambda x : 's_'.format(x)
 		# self.pgres_tab_obshist = 'observed_streamflow_data'
 		self.pgres_tab_obshist = pgres_tab_obshist
 		self.pgres_tab_obshist_func = lambda x : 's_{}'.format(x)
@@ -53,8 +54,10 @@ class Update_alarm_level:
 		self.pgres_tab_forecst_func = lambda x : 'f_{}'.format(x)
 
 		self.return_periods = [100, 50, 25, 10, 5, 2]
+		self.low_warnings_number_id = {'7q10' : 1}
 
 		self.accepted_warning = 10
+		self.accepted_warning_lows = 50
 
 		######################### MAIN ########################
 		# Establish connection
@@ -107,9 +110,6 @@ class Update_alarm_level:
 
 			obs_hist_df.set_index('datetime', inplace=True)
 			obs_hist_df.index = pd.to_datetime(obs_hist_df.index, '%Y-%m-%d')
-
-			# Fix simulated and observed data at same dates
-			# sim_hist_df, obs_hist_df = self.__asincro_df__(sim_hist_df, obs_hist_df)
 			
 			if len(obs_hist_df.index.month.unique()) < 12:
 				print(15 * '-')
@@ -118,28 +118,28 @@ class Update_alarm_level:
 				print(15 * '-')
 
 			# Bias correction fix data
-			"""
-			forecast_df = self.__bias_correction_forecast__(fore_nofix = forecast_df,
-															sim_hist   = sim_hist_df,
-															obs_hist   = obs_hist_df)
-			"""
-
 			forecast_df = self.get_corrected_forecast(simulated_df = sim_hist_df,
-													ensemble_df  = forecast_df, 
-													observed_df  = obs_hist_df)
+													  ensemble_df  = forecast_df, 
+													  observed_df  = obs_hist_df)
 			
 			sim_hist_df = self.__bias_correction__(sim_hist = sim_hist_df, 
-												obs_hist = obs_hist_df)
+												   obs_hist = obs_hist_df)
 
 			# Calc warnings level
-			warnings_level = self.__get_warning_level__(comid = row_id,
-														data  = sim_hist_df)
+			warnings_level     = self.__get_warning_level__(comid = row_id,
+														    data  = sim_hist_df)
+			warnings_low_level = self.__get_warning_low_level__(comid = row_id,
+														        data  = sim_hist_df)
 
 			# Forecast stats
 			ensemble_stats = self.get_ensemble_stats(forecast_df)
 
-			# Obtein alert
+			# Obtein alert high level
 			alert = self.get_excced_rp(ensemble_stats, forecast_df, warnings_level)
+			
+			# Obtein alert low level
+			if alert == 'R0':
+				alert = self.get_occurrence_low_warning(forecast_df, warnings_low_level)
 
 			# Result
 			alert_rv.append(alert)
@@ -176,13 +176,37 @@ class Update_alarm_level:
 		return sim, obs
 
 
-	# Excedence warning
+	# Excedence warning low
+	def get_occurrence_low_warning(self, ensem: pd.DataFrame, warnings: pd.DataFrame):
+
+		# Build esnsemble comparation time serie
+		ts = ensem.median(axis = 1).copy()
+		ts = ts.groupby(ts.index.year.astype(str) +'/'+ ts.index.month.astype(str) +'/'+ ts.index.day.astype(str)).min()
+
+		# Count warnings alerts
+		rv = {}
+		for warning in warnings.columns:
+			rv[warning] = len(ts[ts < warnings[warning].values[0]])
+
+		# Assing warnings
+		if rv['7q10'] >= 3 and rv['7q10'] < 7 :
+			return 'lower_1'
+		elif rv['7q10'] >= 7 and rv['7q10'] < 10 :
+			return 'lower_3'
+		elif rv['7q10'] >= 10 :
+			return 'lower_7'
+		else:
+			return 'R0'
+
+
+	# Excedence warning high 
 	def get_excced_rp(self, stats: pd.DataFrame, ensem: pd.DataFrame, rperiods: pd.DataFrame):
 		dates = stats.index.tolist()
 		startdate = dates[0]
 		enddate = dates[-1]
 		span = enddate - startdate
 		uniqueday = [startdate + datetime.timedelta(days=i) for i in range(span.days + 2)]
+
 		# get the return periods for the stream reach
 		rp2 = rperiods['return_period_2'].values
 		rp5 = rperiods['return_period_5'].values
@@ -190,6 +214,7 @@ class Update_alarm_level:
 		rp25 = rperiods['return_period_25'].values
 		rp50 = rperiods['return_period_50'].values
 		rp100 = rperiods['return_period_100'].values
+		
 		# fill the lists of things used as context in rendering the template
 		days = []
 		r2 = []
@@ -305,6 +330,101 @@ class Update_alarm_level:
 		return corrected_rperiods_df
 	
 
+	def __get_warning_low_level__(self, comid, data):
+
+		def __calc_method__(ts):
+			# Result dictionary
+			rv = {'empirical' : {},
+		 		  'norm'      : {'fun'  : stats.norm,
+					  			 'para' : {'loc'   : np.nanmean(ts), 
+									       'scale' : np.nanstd(ts)}},
+				  'pearson3'  : {'fun' : stats.pearson3,
+					 			 'para' : {'loc'   : np.nanmean(ts), 
+										   'scale' : np.nanstd(ts), 
+										   'skew'  : 1}},
+				  'dweibull'  : {'fun' : stats.dweibull,
+					 			 'para' : {'loc'   : np.nanmean(ts), 
+										   'scale' : np.nanstd(ts), 
+										   'c'     : 1}},
+				  'chi2'      : {'fun' : stats.chi2,
+					 			 'para' : {'loc'   : np.nanmean(ts), 
+									       'scale' : np.nanstd(ts), 
+									       'df'    : 2}},
+				  'gumbel_r'  : {'fun' : stats.gumbel_r,
+					 			 'para' : {'loc'   : np.nanmean(ts) - 0.45005 * np.nanstd(ts),
+										   'scale' : 0.7797 * np.nanstd(ts)}}}
+
+			# Extract empirical distribution data
+			freq, cl = np.histogram(ts, bins='sturges')
+			freq = np.cumsum(freq) / np.sum(freq)
+			cl_marc = (cl[1:] + cl[:-1]) / 2
+
+			# Save values
+			rv['empirical'].update({'freq'    : freq,
+						   			'cl_marc' : cl_marc})
+
+			# Function for stadistical test
+			ba_xi2 = lambda o, e : np.square(np.subtract(o,e)).mean() ** (1/2)
+
+			# Add to probability distribution the cdf and the xi test
+			for p_dist in rv:
+				if p_dist == 'empirical':
+					continue
+				
+				# Build cummulative distribution function (CDF)
+				rv[p_dist].update({'cdf' : rv[p_dist]['fun'].cdf(x = cl_marc, 
+											                     **rv[p_dist]['para'])})
+				
+				# Obtain the xi test result
+				rv[p_dist].update({f'{p_dist}_x2test' : ba_xi2(o = rv[p_dist]['cdf'], 
+											                   e = freq)})
+			
+			# Select best probability function
+			p_dist_comp = pd.DataFrame(data={'Distribution' : [p_dist for p_dist in rv if p_dist != 'empirical'],
+											 'xi2_test'     : [rv[p_dist][f'{p_dist}_x2test'] for p_dist in rv if p_dist != 'empirical']})
+			p_dist_comp.sort_values(by='xi2_test', inplace = True)
+			p_dist_comp.reset_index(drop = True, inplace = True)
+			best_p_dist = p_dist_comp['Distribution'].values[0]
+			
+			# NOTES:
+			# 
+			# Q -> Prob
+			# rv[best_p_dist]['fun'](**rv[best_p_dist]['para']).pdf()
+			#
+			# Q -> Prob acum
+			# rv[best_p_dist]['fun'](**rv[best_p_dist]['para']).cdf()
+			#
+			# Prob acum -> Q
+			# rv[best_p_dist]['fun'](**rv[best_p_dist]['para']).ppf([0.15848846])
+
+			return rv[best_p_dist]['fun'](**rv[best_p_dist]['para'])
+
+
+		# Previous datatime manager
+		data_cp = data.copy()
+		data_cp = data_cp.rolling(window=7).mean()
+		data_cp = data_cp.groupby(data_cp.index.year).min().values.flatten()
+
+		# Calc comparation value
+		rv = {}
+		for key in self.low_warnings_number_id:
+			res = __calc_method__(data_cp)
+			# TODO: Fix in case of small rivers get 7q10 negative
+			val = res.ppf([1/10]) if res.ppf([1/10]) > 0 else 0
+			rv.update({key : val})
+
+
+		# Build result dataframe
+		d = {'rivid': [comid]}
+		d.update(rv)
+
+		# Parse to dataframe
+		corrected_low_warnings_df = pd.DataFrame(data=d)
+		corrected_low_warnings_df.set_index('rivid', inplace=True)
+
+		return corrected_low_warnings_df
+	
+
 	# Bias correction methods
 	def get_corrected_forecast(self, simulated_df, ensemble_df, observed_df):
 		monthly_simulated = simulated_df[simulated_df.index.month == (ensemble_df.index[0]).month].dropna()
@@ -335,50 +455,7 @@ class Update_alarm_level:
 		corrected_ensembles = corrected_ensembles.multiply(min_factor_df, axis=0)
 		corrected_ensembles = corrected_ensembles.multiply(max_factor_df, axis=0)
 		return(corrected_ensembles)
-
-	"""
-	def __bias_correction_forecast__(self, sim_hist, fore_nofix, obs_hist):
-		'''Correct Bias Forecasts'''
-
-		# Selection of monthly simulated data
-		monthly_simulated = sim_hist[sim_hist.index.month == (fore_nofix.index[0]).month].dropna()
-
-		# Obtain Min and max value
-		min_simulated = monthly_simulated.min().values[0]
-		max_simulated = monthly_simulated.max().values[0]
-
-		min_factor_df   = fore_nofix.copy()
-		max_factor_df   = fore_nofix.copy()
-		forecast_ens_df = fore_nofix.copy()
-
-		for column in fore_nofix.columns:
-			# Min Factor
-			tmp_array = np.ones(fore_nofix[column].shape[0])
-			tmp_array[fore_nofix[column] < min_simulated] = 0
-			min_factor = np.where(tmp_array == 0, fore_nofix[column] / min_simulated, tmp_array)
-
-			# Max factor
-			tmp_array = np.ones(fore_nofix[column].shape[0])
-			tmp_array[fore_nofix[column] > max_simulated] = 0
-			max_factor = np.where(tmp_array == 0, fore_nofix[column] / max_simulated, tmp_array)
-
-			# Replace
-			tmp_fore_nofix = fore_nofix[column].copy()
-			tmp_fore_nofix.mask(tmp_fore_nofix <= min_simulated, min_simulated, inplace=True)
-			tmp_fore_nofix.mask(tmp_fore_nofix >= max_simulated, max_simulated, inplace=True)
-
-			# Save data
-			forecast_ens_df.update(pd.DataFrame(tmp_fore_nofix, index=fore_nofix.index, columns=[column]))
-			min_factor_df.update(pd.DataFrame(min_factor, index=fore_nofix.index, columns=[column]))
-			max_factor_df.update(pd.DataFrame(max_factor, index=fore_nofix.index, columns=[column]))
-
-		# Get  Bias Correction
-		corrected_ensembles = ggs.bias.correct_forecast(forecast_ens_df, sim_hist, obs_hist)
-		corrected_ensembles = corrected_ensembles.multiply(min_factor_df, axis=0)
-		corrected_ensembles = corrected_ensembles.multiply(max_factor_df, axis=0)
-
-		return corrected_ensembles
-	"""
+	
 
 	def __bias_correction__(self, sim_hist, obs_hist):
 		return ggs.bias.correct_historical(simulated_data = sim_hist,
@@ -412,7 +489,9 @@ if __name__ == "__main__":
 	pgres_tab_name = 'stations_streamflow'
 	Update_alarm_level(pgres_tab_obshist, pgres_tab_name)
 
+	# """
 	print('Water level data update')
 	pgres_tab_obshist = 'observed_waterlevel_data'
 	pgres_tab_name = 'stations_waterlevel'
 	Update_alarm_level(pgres_tab_obshist, pgres_tab_name)
+	# """

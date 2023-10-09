@@ -75,9 +75,9 @@ class Update_historical_observed_data:
 		df = self.__data_from_hydroshare__(stations = stations,
 										   func_url = func_url_build)
 
-
 		# Make connection
 		conn = db.connect()
+		
 		try:
 			# Insert to database
 			df.to_sql(pgres_table_name, con=conn, if_exists='replace', index=True)
@@ -182,9 +182,10 @@ if __name__ == '__main__':
 	station_table_name = 'stations_streamflow'
 	pgres_table_name   = 'observed_streamflow_data'
 	station_id_name    = 'codigo'
-	id_HS_stations     = '1a02d68216f24a7fbde3669b7760652d'
+	# id_HS_stations     = '1a02d68216f24a7fbde3669b7760652d'
+	id_HS_stations     = '41787ed93210444988f807ddfaae2eea'
 	func_url_build     = lambda station : url_hs +\
-						'{0}/data/contents/Discharge_Data/{1}.csv'.format(id_HS_stations, station)
+						'{0}/data/contents/Discharge_data/{1}.csv'.format(id_HS_stations, station)
 	dict_names = {'Datetime column name'    : 'Datetime',
 				  'Datetime column format'  : '%Y-%m-%d',
 				  'Data column name'        : 'Streamflow (m3/s)',
@@ -205,9 +206,9 @@ if __name__ == '__main__':
 	station_table_name = 'stations_waterlevel'
 	pgres_table_name   = 'observed_waterlevel_data'
 	station_id_name    = 'codigo'
-	id_HS_stations     = '1a02d68216f24a7fbde3669b7760652d'
+	id_HS_stations     = '41787ed93210444988f807ddfaae2eea'
 	func_url_build     = lambda station : url_hs +\
-						'{0}/data/contents/Water_Level_Data/{1}.csv'.format(id_HS_stations, station)
+						'{0}/data/contents/Waterlevel_data/{1}.csv'.format(id_HS_stations, station)
 	dict_names = {'Datetime column name'    : 'Datetime',
 				  'Datetime column format'  : '%Y-%m-%d',
 				  'Data column name'        : 'Water Level (cm)',
