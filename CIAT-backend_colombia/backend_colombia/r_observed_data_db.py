@@ -74,6 +74,8 @@ class Update_historical_observed_data:
 		# Read data of stations
 		df = self.__data_from_hydroshare__(stations = stations,
 										   func_url = func_url_build)
+		
+		print(df)
 
 		# Make connection
 		conn = db.connect()
@@ -104,6 +106,10 @@ class Update_historical_observed_data:
 		# before = time.time()
 		for station in stations:
 			station_data = self.__download_from_comid__(station, func_url)
+
+			print(station)
+			print(station_data)
+
 			try:
 				rv = station_data.merge(rv, 
 										on  = self.dict_names['Datetime column name'].lower(), 
@@ -176,7 +182,7 @@ if __name__ == '__main__':
 	url_hs             = 'https://www.hydroshare.org/resource/'
 
 
-	# """
+	"""
 	print(' Streamflow '.center(70, '-'))
 	# For streamflow download
 	station_table_name = 'stations_streamflow'
