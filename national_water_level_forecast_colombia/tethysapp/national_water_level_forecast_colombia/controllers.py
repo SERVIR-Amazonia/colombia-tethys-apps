@@ -1372,3 +1372,24 @@ def download_img(request):
     response.write(img_bytes)
 
     return response
+
+
+@api_view(['GET'])
+@authentication_classes((TokenAuthentication,))
+@controller(name='get_warning',
+            url='national-water-level-forecast-colombia/get-warnings',
+            login_required=False)
+def down_load_warning_list(request):
+
+    # stations_streamflow
+    # stations_waterlevel
+
+    db= create_engine(tokencon)
+    conn = db.connect()
+    try:
+        df = pd.read_sql("select codigo, nombre, comid, alert from stations_waterlevel order by codigo", conn)
+    finally:
+        # Close conection
+        conn.close()
+    
+    return JsonResponse(df.to_dict(orient='list'))
