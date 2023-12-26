@@ -693,9 +693,6 @@ def forecast_stats(stats: pd.DataFrame, rperiods: pd.DataFrame = None, titles: d
 
 # Forecast plot
 def get_forecast_plot(comid, site, stats, rperiods, lowlevel_vals, records, obs_data):
-
-    print(lowlevel_vals)
-
     corrected_stats_df = stats
     corrected_rperiods_df = rperiods
     fixed_records = records

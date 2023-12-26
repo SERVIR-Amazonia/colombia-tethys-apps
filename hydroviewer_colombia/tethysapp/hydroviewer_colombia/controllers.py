@@ -962,7 +962,6 @@ def forecast_stats(stats: pd.DataFrame, rperiods: pd.DataFrame = None, titles: d
     return figure
 
 
-
 ####################################################################################################
 ##                                   CONTROLLERS AND REST APIs                                    ##
 ####################################################################################################
@@ -1661,6 +1660,23 @@ def user_manual(request):
 def technical_manual(request):
     context = {}
     return render(request, 'hydroviewer_colombia/technical_manual.html', context)
+
+
+############################################################
+@controller(name='get_drainage_json', 
+            url='hydroviewer-colombia/get-drainage-json')
+def get_drainage_json(request):
+    # WFS path
+    url = 'https://geoserver.hydroshare.org/geoserver/HS-dd069299816c4f1b82cd1fb2d59ec0ab/wfs?service=WFS&version=1.0.0&request=GetFeature&typeName=HS-dd069299816c4f1b82cd1fb2d59ec0ab%3Acolombia_geoglows_drainage_v1&outputFormat=application/json'
+    try:
+        # Descargar el GeoJSON desde la URL
+        response = requests.get(url)
+        response.raise_for_status()  # Verificar si la solicitud fue exitosa
+        geojson_data = response.json()  # Convertir la respuesta a JSON
+        # Devolver el GeoJSON como respuesta JSON
+        return JsonResponse(geojson_data, safe=False)
+    except requests.exceptions.RequestException as e:
+        return JsonResponse({'error': f'Error al obtener el GeoJSON: {str(e)}'}, status=500)
 
 ############################################################
 #                          SERVICES                        #

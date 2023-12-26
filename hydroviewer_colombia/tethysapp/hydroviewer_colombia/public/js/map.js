@@ -336,22 +336,14 @@ window.onload = function () {
     }
 
 
-    // Load drainage network
-    var url = 'https://geoserver.hydroshare.org/geoserver/HS-dd069299816c4f1b82cd1fb2d59ec0ab/ows';
-    var URL = url + L.Util.getParamString(L.Util.extend({service     : 'WFS',
-                                                        version      : '1.0.0',
-                                                        request      : 'GetFeature',
-                                                        typeName     : 'HS-dd069299816c4f1b82cd1fb2d59ec0ab:colombia_geoglows_drainage_v1',
-                                                        maxFeatures  : 2000000,
-                                                        outputFormat : 'application/json'
-                                                        }));
-    
-    fetch(URL, {
+    // Load drainage network 
+    fetch("get-drainage-json", {
         method: 'GET',
         headers: {'Content-Type': 'application/json'}
     })
     .then(response=>response.json())
     .then(resp => {
+        console.log(resp);
         var drainage = new L.geoJson(resp,
             {onEachFeature : function(feature, layer){
                 layer.on({

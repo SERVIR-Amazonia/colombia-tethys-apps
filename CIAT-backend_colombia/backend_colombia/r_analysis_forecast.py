@@ -57,7 +57,7 @@ class Update_alarm_level:
 		self.low_warnings_number_id = {'7q10' : 1}
 
 		self.accepted_warning = 10
-		self.accepted_warning_lows = 50
+		# self.accepted_warning_lows = 50
 
 		######################### MAIN ########################
 		# Establish connection
@@ -409,6 +409,7 @@ class Update_alarm_level:
 		rv = {}
 		for key in self.low_warnings_number_id:
 			res = __calc_method__(data_cp)
+			
 			# TODO: Fix in case of small rivers get 7q10 negative
 			val = res.ppf([1/10]) if res.ppf([1/10]) > 0 else 0
 			rv.update({key : val})
