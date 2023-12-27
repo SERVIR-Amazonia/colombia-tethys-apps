@@ -230,21 +230,128 @@ function onEachFeature(feature, layer) {
 };
 
 
+// ------------------------------------------------------------------------------------------------------------ //
+//                                     LOAD DYNAMIC DRAINAGE                                                    //
+// ------------------------------------------------------------------------------------------------------------ //
+// Build and add map layer
+function __build_map_layer__(url, layers_names){
+    for (const layer_name of layers_names){
+        var tmp = L.tileLayer.wms(url + "?service=WMS&",
+                                {layers  : 'HS-4e156873bb9a40989ea18175e0f3e911:' + layer_name,
+                                 format  : 'image/vnd.jpeg-png',
+                                 version : '1.1.0',
+                                 transparent: true,
+                                 tms: true,
+                                 });
+        tmp.addTo(map);
+    }
+}
+
+
+// Remove all layers
+function __remove_all_layers__(){
+    map.eachLayer(function (layer) {
+            if (!est_L_1 || !est_L_3 || !est_L_7 || !est_R000 || !est_R002 || !est_R005 || !est_R010 || !est_R025 || !est_R050 || !est_R100) {
+                map.removeLayer(layer);
+            };
+        });
+}
+
+
+function __load_dynamic_drainage__(zoom_data, url, old_zoom){
+    if (zoom_data <= 5){
+				
+        if (old_zoom > 5){
+            __remove_all_layers__();
+            L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png').addTo(map);
+            
+            __build_map_layer__(url, ['vpu_601_streams_4326_8_7_6',
+                                      'vpu_603_streams_4326_8_7_6',
+                                      'vpu_605_streams_4326_8_7_6',
+                                      'vpu_614_streams_4326_8_7_6']);
+        }
+        
+        old_zoom = zoom_data;
+        return old_zoom;
+        
+    } else if ( zoom_data > 5 && zoom_data <= 7){
+        
+        if ( old_zoom <= 5 || old_zoom > 7){
+        
+            __remove_all_layers__();
+            L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png').addTo(map);
+            
+            __build_map_layer__(url, ['vpu_601_streams_4326_8_7_6',
+                                      'vpu_603_streams_4326_8_7_6',
+                                      'vpu_605_streams_4326_8_7_6',
+                                      'vpu_614_streams_4326_8_7_6',
+                                      'vpu_601_streams_4326_5_4',
+                                      'vpu_603_streams_4326_5_4',
+                                      'vpu_605_streams_4326_5_4',
+                                      'vpu_614_streams_4326_5_4']);
+        }
+        
+        old_zoom = zoom_data;
+        return old_zoom;
+        
+    } else if (zoom_data > 7 && zoom_data <= 11) {
+    
+        if (old_zoom <= 7 || old_zoom > 11) {
+            __remove_all_layers__();
+            L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png').addTo(map);
+            
+            __build_map_layer__(url, ['vpu_601_streams_4326_8_7_6',
+                                      'vpu_603_streams_4326_8_7_6',
+                                      'vpu_605_streams_4326_8_7_6',
+                                      'vpu_614_streams_4326_8_7_6',
+                                      'vpu_601_streams_4326_5_4',
+                                      'vpu_603_streams_4326_5_4',
+                                      'vpu_605_streams_4326_5_4',
+                                      'vpu_614_streams_4326_5_4',
+                                      'vpu_601_streams_4326_3',
+                                      'vpu_603_streams_4326_3',
+                                      'vpu_605_streams_4326_3',
+                                      'vpu_614_streams_4326_3']);
+        }
+        
+        old_zoom = zoom_data;
+        return old_zoom;
+        
+    } else if (zoom_data > 11) {
+    
+        if (old_zoom <= 11 ){
+        
+            __remove_all_layers__();
+            L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png').addTo(map);
+        
+            __build_map_layer__(url, ['vpu_601_streams_4326_8_7_6',
+                                      'vpu_603_streams_4326_8_7_6',
+                                      'vpu_605_streams_4326_8_7_6',
+                                      'vpu_614_streams_4326_8_7_6',
+                                      'vpu_601_streams_4326_5_4',
+                                      'vpu_603_streams_4326_5_4',
+                                      'vpu_605_streams_4326_5_4',
+                                      'vpu_614_streams_4326_5_4',
+                                      'vpu_601_streams_4326_3',
+                                      'vpu_603_streams_4326_3',
+                                      'vpu_605_streams_4326_3',
+                                      'vpu_614_streams_4326_3',
+                                      'vpu_601_streams_4326_2',
+                                      'vpu_603_streams_4326_2',
+                                      'vpu_605_streams_4326_2',
+                                      'vpu_614_streams_4326_2']);
+        }
+        
+        old_zoom = zoom_data;
+        return old_zoom;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+//                                        WINDOW ON LOAD                                              //
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 window.onload = function () {
-  // Load drainage network
-
-  var url = 'https://geoserver.hydroshare.org/geoserver/HS-dd069299816c4f1b82cd1fb2d59ec0ab/wms';
-  L.tileLayer.wms(url + "?service=WMS&",
-                    {layers  : 'HS-dd069299816c4f1b82cd1fb2d59ec0ab:colombia_geoglows_drainage_v1',
-                    format  : 'image/vnd.jpeg-png',
-                    version : '1.1.0',
-                    transparent: true,
-                    srs     : 'EPSG:4326',
-                    opacity: 0.65,
-                    }
-                    ).addTo(map);
-
 
   // Load stations 
   fetch("get-stations")
@@ -315,6 +422,21 @@ window.onload = function () {
         est_L_7.addTo(map);
 
     });
+
+    // Load drainage network
+    var old_zoom = map._zoom;
+    var url = 'https://geoserver.hydroshare.org/geoserver/HS-4e156873bb9a40989ea18175e0f3e911/wms';
+
+    __build_map_layer__(url, ['vpu_601_streams_4326_8_7_6',
+                              'vpu_603_streams_4326_8_7_6',
+                              'vpu_605_streams_4326_8_7_6',
+                              'vpu_614_streams_4326_8_7_6']);
+
+    map.on('zoom', function(){
+        zoom_data = map._zoom;
+        old_zoom = __load_dynamic_drainage__(zoom_data, url, old_zoom);
+    });
+
 };
 
 
